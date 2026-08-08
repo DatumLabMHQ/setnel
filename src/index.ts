@@ -44,9 +44,15 @@ async function main() {
           }
         }
       }
-      // Exit non-zero on any critical alert (data or technical) so the GH
-      // Actions run is flagged for inspection in the Actions tab.
-      if (alerts.some((a) => a.critical)) process.exitCode = 1;
+      // A fired alert is expected output, not a CI failure — it's already
+      // delivered via Telegram (data) and the email digest (technical). Failing
+      // the run here just spams a redundant "Run failed" email for the same
+      // event. Surface critical alerts as a GitHub Actions warning annotation
+      // instead: the run is still flagged in the Actions tab, without failing.
+      const criticalCount = alerts.filter((a) => a.critical).length;
+      if (criticalCount > 0) {
+        console.log(`::warning::monitor-check: ${criticalCount} critical alert(s) fired — see Telegram / digest.`);
+      }
       return;
     }
 

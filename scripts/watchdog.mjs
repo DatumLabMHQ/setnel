@@ -14,6 +14,16 @@ const STALE_MIN = Number(process.env.SETNEL_STALE_MIN || '20'); // dashboards pi
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT = process.env.TELEGRAM_CHAT_ID;
 
+// A single Vercel/Neon cold start can push /api/v1/status past a tight timeout
+// (we've seen 12-18s spin-ups). One slow response is not an outage, so we retry
+// a few times before concluding the Hub is unreachable. A genuinely dead Hub
+// fails every attempt; a one-off cold start does not.
+const TIMEOUT_MS = Number(process.env.SETNEL_TIMEOUT_MS || '25000');
+const ATTEMPTS = Number(process.env.SETNEL_RETRIES || '3');
+const RETRY_DELAY_MS = Number(process.env.SETNEL_RETRY_DELAY_MS || '5000');
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function tg(text) {
   if (!TOKEN || !CHAT) {
     console.error('telegram not configured; would have sent:\n' + text);
@@ -27,21 +37,37 @@ async function tg(text) {
   if (!r.ok) console.error('watchdog TG send failed', r.status, await r.text().catch(() => ''));
 }
 
+// Fetch the status endpoint, retrying transient failures (cold-start timeouts,
+// 5xx) before we conclude the Hub is down. Returns parsed JSON on success, or
+// throws an Error whose message describes the last failure.
+async function fetchStatus() {
+  let lastErr;
+  for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(STATUS_URL, { signal: ctrl.signal });
+      if (res.ok) return await res.json();
+      lastErr = new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err));
+    } finally {
+      clearTimeout(t);
+    }
+    if (attempt < ATTEMPTS) {
+      console.error(`watchdog: attempt ${attempt}/${ATTEMPTS} failed (${lastErr?.message || lastErr}); retrying in ${RETRY_DELAY_MS}ms`);
+      await sleep(RETRY_DELAY_MS);
+    }
+  }
+  throw lastErr || new Error('unknown error');
+}
+
 async function main() {
   let json;
   try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 15000);
-    const res = await fetch(STATUS_URL, { signal: ctrl.signal });
-    clearTimeout(t);
-    if (!res.ok) {
-      await tg(`🚨 Setnel watchdog: Hub status endpoint returned HTTP ${res.status}. The Hub may be down — alerts could be silently failing.`);
-      process.exitCode = 1;
-      return;
-    }
-    json = await res.json();
+    json = await fetchStatus();
   } catch (err) {
-    await tg(`🚨 Setnel watchdog: cannot reach the Hub (${err?.message || err}). The Hub may be down — alerts could be silently failing.`);
+    await tg(`🚨 Setnel watchdog: cannot reach the Hub after ${ATTEMPTS} attempts (${err?.message || err}). The Hub may be down — alerts could be silently failing.`);
     process.exitCode = 1;
     return;
   }
