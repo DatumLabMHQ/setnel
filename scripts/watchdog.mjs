@@ -11,6 +11,10 @@
 
 const STATUS_URL = process.env.SETNEL_STATUS_URL || 'https://setnel.datumlab.xyz/api/v1/status';
 const STALE_MIN = Number(process.env.SETNEL_STALE_MIN || '20'); // dashboards ping every 5m
+// The watchdog has no cooldown — it fires every 15 min a condition holds. A few
+// old rows stuck in the dead-letter are not an every-15-min emergency, so only
+// page once the backlog is real (a genuine delivery meltdown climbs fast).
+const DEADLETTER_MIN = Number(process.env.SETNEL_DEADLETTER_MIN || '20');
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT = process.env.TELEGRAM_CHAT_ID;
 
@@ -95,9 +99,10 @@ async function main() {
     );
   }
 
-  // Undelivered alerts sitting in the dead-letter.
-  if (json.failedNotifications > 0) {
-    problems.push(`${json.failedNotifications} undelivered alert(s) in the dead-letter — check delivery.`);
+  // Undelivered alerts sitting in the dead-letter. Only page on a real backlog:
+  // a handful of stuck rows must not re-page every 15 min (no cooldown here).
+  if (json.failedNotifications >= DEADLETTER_MIN) {
+    problems.push(`${json.failedNotifications} undelivered alert(s) in the dead-letter (>= ${DEADLETTER_MIN}) — delivery may be broken.`);
   }
 
   if (problems.length) {
