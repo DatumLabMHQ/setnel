@@ -1,0 +1,28 @@
+name: setnel-resolve
+# Every 30 min: ask the Hub to resolve stale incidents and age out old
+# dead-letter rows. cron/resolve was never wired to a schedule, so incidents
+# never auto-resolved and the failed_notifications backlog only grew. This is a
+# dumb HTTP trigger; the logic lives in /api/v1/cron/resolve.
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: setnel-resolve
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Trigger cron/resolve
+        run: |
+          code=$(curl -s -o /tmp/resolve.json -w "%{http_code}" --max-time 60 \
+            https://setnel.datumlab.xyz/api/v1/cron/resolve)
+          cat /tmp/resolve.json; echo
+          echo "status: $code"
+          # A single hiccup shouldn't page anyone; the next run retries in 30m.
+          if [ "$code" != "200" ]; then echo "::warning::cron/resolve returned $code"; fi

@@ -184,3 +184,21 @@ export async function resolveStale(): Promise<number> {
   `) as { id: string }[];
   return rows.length;
 }
+
+/**
+ * Age out old dead-letter rows. A delivery failure older than `maxAgeHours` is
+ * stale housekeeping — the alert it carried is long past actionable — so mark it
+ * resolved. Without this the `failed_notifications` count only grows, and the
+ * watchdog (which reads it from /api/v1/status) nags forever. Returns how many
+ * rows were cleared.
+ */
+export async function resolveAgedDeadLetter(maxAgeHours = 24): Promise<number> {
+  const rows = (await sql`
+    UPDATE failed_notifications
+    SET resolved_at = now()
+    WHERE resolved_at IS NULL
+      AND created_at < now() - make_interval(hours => ${maxAgeHours})
+    RETURNING id
+  `) as { id: string }[];
+  return rows.length;
+}
