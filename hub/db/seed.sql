@@ -14,7 +14,8 @@ INSERT INTO dashboards (id, name, protocol_slug, base_url, enabled) VALUES
   ('defi_tvl',      'DeFi TVL Benchmark',            'defi-tvl',     'https://defi-tvl-dashboard.vercel.app',            false),
   ('liquidator',    'Liquidator Economy',            'liquidator',   'https://liquidator-economy-dashboard.vercel.app',  false),
   ('lending_intel', 'Lending Intelligence Terminal', 'lending-intel','https://lending-intelligence-terminal.vercel.app', false),
-  ('sparklend',     'Spark Lend',                    'sparklend',    'https://sparklend-dashboard.vercel.app',           false)
+  ('sparklend',     'Spark Lend',                    'sparklend',    'https://sparklend-dashboard.vercel.app',           false),
+  ('platform',      'Datum data platform',           'datum-models', 'https://github.com/DatumLabMHQ/datum-models',      false)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   protocol_slug = EXCLUDED.protocol_slug,
