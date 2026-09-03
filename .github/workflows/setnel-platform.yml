@@ -1,0 +1,32 @@
+name: setnel-platform
+# Detectors for the Datum data platform (datum-models). The platform has no HTTP surface, so
+# Setnel reads its run log, freshness table and curated tables directly and posts to the Hub
+# every 15 minutes. Needs repo secrets PLATFORM_DATABASE_URL and SETNEL_DASHBOARD_SECRET_PLATFORM,
+# and the hub's Vercel env SETNEL_DASHBOARD_SECRET_PLATFORM with the same value.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: setnel-platform
+  cancel-in-progress: false
+
+jobs:
+  platform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run platform detectors
+        env:
+          SETNEL_HUB_URL: https://setnel.datumlab.xyz
+          SETNEL_DASHBOARD_SECRET_PLATFORM: ${{ secrets.SETNEL_DASHBOARD_SECRET_PLATFORM }}
+          PLATFORM_DATABASE_URL: ${{ secrets.PLATFORM_DATABASE_URL }}
+        run: node scripts/detectors/platform.mjs
