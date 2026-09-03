@@ -137,17 +137,18 @@ dashboards:
       # check is needed.
 
   # ───────────── Navi — Sui lending ─────────────
-  # next.config.ts sets basePath: '/navi', so all routes are served under
-  # /navi/api/*. healthPath and metric paths reflect that.
+  # Served by the Sui Lending terminal (datumlabs-defi-dashboard is archived).
+  # /api/navi/pools returns the same shape: totals.{totalSupplyUsd,
+  # totalBorrowsUsd,tvl} and pools[i].utilization.
   - id: navi
     name: Navi Lending
-    baseUrl: https://datumlabs-defi-dashboard.vercel.app
-    healthPath: /navi/api/health
+    baseUrl: https://sui-lending.vercel.app
+    healthPath: /api/health
     enabled: true
     metrics:
       - id: total_supply
         label: Total supply
-        path: /navi/api/pools
+        path: /api/navi/pools
         extract: totals.totalSupplyUsd
         unit: usd
         alert:
@@ -155,14 +156,14 @@ dashboards:
           critical: true
       - id: total_borrows
         label: Total borrows
-        path: /navi/api/pools
+        path: /api/navi/pools
         extract: totals.totalBorrowsUsd
         unit: usd
         alert:
           percentChange: 20
       - id: tvl
         label: TVL (available liquidity)
-        path: /navi/api/pools
+        path: /api/navi/pools
         extract: totals.tvl
         unit: usd
         alert:
@@ -173,7 +174,7 @@ dashboards:
       # are listed/delisted.
       - id: pool_0_utilization
         label: Pool #0 utilization
-        path: /navi/api/pools
+        path: /api/navi/pools
         extract: pools[0].utilization
         unit: percent
         allowMissing: true
@@ -182,7 +183,7 @@ dashboards:
           critical: true
       - id: pool_1_utilization
         label: Pool #1 utilization
-        path: /navi/api/pools
+        path: /api/navi/pools
         extract: pools[1].utilization
         unit: percent
         allowMissing: true
@@ -191,7 +192,7 @@ dashboards:
           critical: true
       - id: pool_2_utilization
         label: Pool #2 utilization
-        path: /navi/api/pools
+        path: /api/navi/pools
         extract: pools[2].utilization
         unit: percent
         allowMissing: true
