@@ -21,7 +21,7 @@ jobs:
       - name: Trigger cron/resolve
         run: |
           code=$(curl -s -o /tmp/resolve.json -w "%{http_code}" --max-time 60 \
-            https://setnel.datumlab.xyz/api/v1/cron/resolve)
+            "https://setnel.datumlab.xyz/api/v1/cron/resolve?key=${{ secrets.SETNEL_CRON_SECRET }}")
           cat /tmp/resolve.json; echo
           echo "status: $code"
           # A single hiccup shouldn't page anyone; the next run retries in 30m.

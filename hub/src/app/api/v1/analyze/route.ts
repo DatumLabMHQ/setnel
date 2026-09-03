@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireCronKey } from '@/lib/cron-auth';
 import { runBaselines } from '@/lib/baseline';
 import { runCompound } from '@/lib/compound';
 import { runEscalations } from '@/lib/escalate';
@@ -13,11 +14,8 @@ export const dynamic = 'force-dynamic';
 // store, then compound/correlated rules over active incidents. Also records its
 // heartbeat and runs the self-check (pages if any Setnel cron is stale).
 export async function GET(req: Request) {
-  const secret = process.env.SETNEL_CRON_SECRET;
-  if (secret) {
-    const key = new URL(req.url).searchParams.get('key');
-    if (key !== secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
+  const denied = requireCronKey(req);
+  if (denied) return denied;
   const baseline = await runBaselines();
   const compound = await runCompound();
   const escalation = await runEscalations();
