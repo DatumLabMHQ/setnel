@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireCronKey } from '@/lib/cron-auth';
 import { runCrossChecks } from '@/lib/crosscheck';
 import { recordHeartbeat } from '@/lib/admin';
 
@@ -10,13 +11,8 @@ export const dynamic = 'force-dynamic';
 // and raises data-integrity incidents on divergence. Triggered hourly by the
 // setnel-crosscheck GitHub Actions workflow.
 export async function GET(req: Request) {
-  const secret = process.env.SETNEL_CRON_SECRET;
-  if (secret) {
-    const key = new URL(req.url).searchParams.get('key');
-    if (key !== secret) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-    }
-  }
+  const denied = requireCronKey(req);
+  if (denied) return denied;
   const out = await runCrossChecks();
   await recordHeartbeat('crosscheck');
   return NextResponse.json({ ok: true, ...out });
