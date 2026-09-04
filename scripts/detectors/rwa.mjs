@@ -11,7 +11,7 @@ import { createHmac } from 'node:crypto';
 
 const HUB = process.env.SETNEL_HUB_URL || 'https://setnel.datumlab.xyz';
 const SECRET = process.env.SETNEL_DASHBOARD_SECRET_RWA;
-const WORKER = process.env.RWA_WORKER_URL || 'https://rwa-terminal-worker.aborodeolusegun.workers.dev';
+const WORKER = process.env.RWA_WORKER_URL || 'https://rwa-terminal-worker.datumlabs.workers.dev';
 const DASHBOARD_ID = 'rwa';
 
 const STALE_H = 24;          // snapshot older than this = indexer/data stopped
