@@ -47,6 +47,24 @@ export async function ingestBatch(
     const exp = ev.payload?.exposureUsd;
     const exposureUsd = typeof exp === 'number' && Number.isFinite(exp) ? exp : null;
 
+    // Content signals: store once per fingerprint (7-day window), never open an incident,
+    // never page. The Content page and /api/v1/signals read them back.
+    if (ev.category === 'signal') {
+      const dup = (await sql`
+        SELECT 1 FROM events WHERE category = 'signal' AND fingerprint = ${fingerprint} AND fired_at > now() - interval '7 days' LIMIT 1
+      `) as unknown[];
+      if (dup.length > 0) continue;
+      await sql`
+        INSERT INTO events
+          (dashboard_id, detector_id, category, severity, message, payload, link_path, fingerprint, incident_id, signal_status)
+        VALUES
+          (${dashboard.id}, ${ev.detectorId}, 'signal', ${severity}, ${ev.message},
+           ${JSON.stringify(ev.payload ?? {})}, ${linkPath}, ${fingerprint}, NULL, 'new')
+      `;
+      stored += 1;
+      continue;
+    }
+
     // Look for an existing active incident with this fingerprint.
     const existing = (await sql`
       SELECT * FROM incidents

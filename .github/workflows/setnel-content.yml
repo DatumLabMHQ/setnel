@@ -1,0 +1,35 @@
+name: setnel-content
+
+# Content signals from the data platform: runs after the platform's 00:xx UTC full sweep and
+# the marts that follow it, so day-over-day comparisons see a complete previous day.
+on:
+  schedule:
+    - cron: "10 7 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print signals instead of posting them to the Hub"
+        type: boolean
+        default: false
+
+concurrency:
+  group: setnel-content
+  cancel-in-progress: false
+
+jobs:
+  content:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Run content detectors
+        env:
+          PLATFORM_DATABASE_URL: ${{ secrets.PLATFORM_DATABASE_URL }}
+          SETNEL_DASHBOARD_SECRET_PLATFORM: ${{ secrets.SETNEL_DASHBOARD_SECRET_PLATFORM }}
+          SETNEL_HUB_URL: https://setnel.datumlab.xyz
+        run: node scripts/detectors/content.mjs ${{ inputs.dry_run && '--dry-run' || '' }}
