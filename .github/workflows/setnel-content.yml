@@ -31,5 +31,5 @@ jobs:
         env:
           PLATFORM_DATABASE_URL: ${{ secrets.PLATFORM_DATABASE_URL }}
           SETNEL_DASHBOARD_SECRET_PLATFORM: ${{ secrets.SETNEL_DASHBOARD_SECRET_PLATFORM }}
-          SETNEL_HUB_URL: https://setnel.datumlab.xyz
+          SETNEL_HUB_URL: https://setnel-hub-datum.vercel.app   # the Datum Labs hub; the platform dashboard exists only there
         run: node scripts/detectors/content.mjs ${{ inputs.dry_run && '--dry-run' || '' }}

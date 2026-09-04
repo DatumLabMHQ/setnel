@@ -26,7 +26,7 @@ jobs:
       - run: npm ci
       - name: Run platform detectors
         env:
-          SETNEL_HUB_URL: https://setnel.datumlab.xyz
+          SETNEL_HUB_URL: https://setnel-hub-datum.vercel.app   # the Datum Labs hub; the platform dashboard exists only there
           SETNEL_DASHBOARD_SECRET_PLATFORM: ${{ secrets.SETNEL_DASHBOARD_SECRET_PLATFORM }}
           PLATFORM_DATABASE_URL: ${{ secrets.PLATFORM_DATABASE_URL }}
         run: node scripts/detectors/platform.mjs
