@@ -15,6 +15,9 @@ export const IncomingEventSchema = z.object({
     'whale-activity',
     'depegging',
     'technical',
+    // Content signals: a story angle with draft text and handles, generated from the data
+    // platform's curated tables. Stored, never an incident, never paged. See /setnel/content.
+    'signal',
   ]),
   severity: z.enum(['info', 'warning', 'critical', 'emergency']),
   message: z.string().min(1).max(1000),
