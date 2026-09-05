@@ -1,4 +1,5 @@
 import { sql, type Severity } from './db';
+import { EVENTS, idempotencyKey, onchainsuiteConfigured, sendEvent } from './onchainsuite';
 
 const SEVERITY_PREFIX: Record<Severity, string> = {
   info: 'ℹ️ Info',
@@ -97,9 +98,41 @@ async function sendEmailOnce(subject: string, text: string, recipients: string[]
   }
 }
 
-/** Is email delivery configured? (Resend key + from address.) */
+/** Is email delivery configured? Onchain Suite (preferred) or the legacy Resend pair. */
 export function emailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.SETNEL_EMAIL_FROM);
+  return onchainsuiteConfigured() || Boolean(process.env.RESEND_API_KEY && process.env.SETNEL_EMAIL_FROM);
+}
+
+/**
+ * Email through Onchain Suite: one `setnel_incident` event per recipient. The automation in the
+ * Onchain Suite dashboard turns it into the email. Idempotent per incident, recipient and
+ * 10-minute bucket, so a retried notify does not double-send.
+ */
+async function sendViaOnchainSuite(args: {
+  subject: string; dashboardName: string; severity: Severity; message: string; deepLink: string;
+  recipients: string[]; incidentId?: string | number;
+}): Promise<{ ok: boolean; error?: string }> {
+  const bucket = Math.floor(Date.now() / 600_000);
+  const errors: string[] = [];
+  let sent = 0;
+  for (const email of args.recipients.slice(0, 50)) {
+    const r = await sendEvent({
+      event: EVENTS.incident,
+      email,
+      payload: {
+        subject: args.subject.slice(0, 200),
+        dashboard: args.dashboardName,
+        severity: args.severity,
+        severity_label: SEVERITY_PREFIX[args.severity],
+        message: args.message.slice(0, 2000),
+        link: args.deepLink,
+        incident_id: args.incidentId == null ? null : String(args.incidentId),
+      },
+      idempotencyKey: idempotencyKey('setnel-incident', args.incidentId ?? 'na', email, bucket),
+    });
+    if (r.ok) sent += 1; else errors.push(`${email}: ${r.error}`);
+  }
+  return sent > 0 ? { ok: true } : { ok: false, error: errors.join('; ').slice(0, 300) || 'no recipients' };
 }
 
 /** Generic one-shot email (login links, digests). Returns success. */
@@ -118,13 +151,15 @@ export async function notifyEmail(args: {
   recipients: string[];
   incidentId?: string | number;
 }): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY || !process.env.SETNEL_EMAIL_FROM || !args.recipients.length) return false;
+  if (!emailConfigured() || !args.recipients.length) return false;
   const subject = `${SEVERITY_PREFIX[args.severity]} • ${args.dashboardName}`;
   const text = [`${args.dashboardName} — ${args.severity}`, '', args.message, '', `Open: ${args.deepLink}`].join('\n');
 
   let lastError = 'unknown';
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const r = await sendEmailOnce(subject, text, args.recipients);
+    const r = onchainsuiteConfigured()
+      ? await sendViaOnchainSuite({ subject, dashboardName: args.dashboardName, severity: args.severity, message: args.message, deepLink: args.deepLink, recipients: args.recipients, incidentId: args.incidentId })
+      : await sendEmailOnce(subject, text, args.recipients);
     if (r.ok) return true;
     lastError = r.error ?? 'unknown';
     if (attempt < MAX_ATTEMPTS) await sleep(RETRY_DELAY_MS * attempt);

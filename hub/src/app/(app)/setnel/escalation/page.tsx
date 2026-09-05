@@ -14,7 +14,7 @@ export default async function EscalationPage() {
     getEscalation(), getRecentEscalations(), getChannels(), getRotation(), getCurrentOnCall(),
   ]);
   const telegramOk = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
-  const emailOk = Boolean(process.env.RESEND_API_KEY && process.env.SETNEL_EMAIL_FROM);
+  const emailOk = Boolean(process.env.ONCHAINSUITE_SECRET_KEY) || Boolean(process.env.RESEND_API_KEY && process.env.SETNEL_EMAIL_FROM);
   const rosterText = rotation.map((r) => (r.contact ? `${r.member} <${r.contact}>` : r.member)).join('\n');
 
   return (
@@ -83,7 +83,7 @@ export default async function EscalationPage() {
         <div className="panel-head"><h2>Notification channels</h2><span className="panel-note">where each severity is delivered</span></div>
         <div className="legend" style={{ marginTop: 0, marginBottom: 12 }}>
           <span className="legend-item"><i className={`cov-key ${telegramOk ? 'cov-yes' : 'cov-blocked'}`}>{telegramOk ? '✓' : '✕'}</i> Telegram {telegramOk ? 'connected' : 'not configured'}</span>
-          <span className="legend-item"><i className={`cov-key ${emailOk ? 'cov-yes' : 'cov-blocked'}`}>{emailOk ? '✓' : '✕'}</i> Email {emailOk ? 'connected' : 'needs RESEND_API_KEY + SETNEL_EMAIL_FROM'}</span>
+          <span className="legend-item"><i className={`cov-key ${emailOk ? 'cov-yes' : 'cov-blocked'}`}>{emailOk ? '✓' : '✕'}</i> Email {emailOk ? (process.env.ONCHAINSUITE_SECRET_KEY ? 'via Onchain Suite' : 'via Resend') : 'needs ONCHAINSUITE_SECRET_KEY'}</span>
         </div>
         <div className="cov-wrap">
           <table className="cov-table">

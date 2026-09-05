@@ -50,3 +50,33 @@ deploys, and sends their cron URL to add to the heartbeat.
 - **Aave V3** — 10 detectors
 - **State of SUI** — 6 detectors across 5 Sui lending protocols (Navi, Suilend,
   Scallop, AlphaLend, Bucket)
+
+## Email via Onchain Suite
+
+The hub sends email through Onchain Suite (Datum's messaging product), not a transactional mail API.
+It posts a custom event per recipient; an automation in the Onchain Suite dashboard turns the event
+into the email. Nothing is sent until that automation exists, is active and is published.
+
+Env on the hub: `ONCHAINSUITE_SECRET_KEY` (server-side secret key). `RESEND_API_KEY` + `SETNEL_EMAIL_FROM`
+remain as the legacy fallback when the Onchain Suite key is absent.
+
+Event the hub sends: `setnel_incident`, contact by email, payload:
+
+| key | example |
+|---|---|
+| `subject` | `🚨 CRITICAL • State of SUI` |
+| `dashboard` | `State of SUI` |
+| `severity` | `critical` |
+| `severity_label` | `🚨 CRITICAL` |
+| `message` | `NAVI USDC utilization crossed 95%` |
+| `link` | `https://setnel-hub-datum.vercel.app/setnel/incident/123` |
+| `incident_id` | `123` |
+
+Automation recipe (Onchain Suite dashboard): trigger `app_event`, event name `setnel_incident`, then a
+`send_email` step pointed at a template whose subject is `{{ event.subject | default:'Setnel alert' }}`
+and whose body uses `{{ event.severity_label | default:'Alert' }}`, `{{ event.dashboard | default:'Setnel' }}`,
+`{{ event.message | default:'' }}` and `{{ event.link | default:'https://setnel-hub-datum.vercel.app' }}`.
+Every variable needs a `default` filter or Onchain Suite refuses to launch the template.
+
+Idempotency: one key per incident, recipient and 10-minute bucket, so retries never double-send.
+Their queue rejects keys containing `:`; the helper strips them.
