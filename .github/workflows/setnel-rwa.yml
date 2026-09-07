@@ -23,6 +23,6 @@ jobs:
           node-version: '20'
       - name: Run RWA detectors
         env:
-          SETNEL_HUB_URL: https://setnel.datumlab.xyz
+          SETNEL_HUB_URL: https://setnel-hub-datum.vercel.app
           SETNEL_DASHBOARD_SECRET_RWA: ${{ secrets.SETNEL_DASHBOARD_SECRET_RWA }}
         run: node scripts/detectors/rwa.mjs

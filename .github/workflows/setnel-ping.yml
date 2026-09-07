@@ -25,8 +25,8 @@ jobs:
       - name: Ping dashboard cron routes
         run: |
           CRON_URLS=(
-            "https://aave-dashboard.vercel.app/api/setnel/cron"
-            "https://sui-lending.vercel.app/api/setnel/cron"
+            "https://aave-dashboard-datum.vercel.app/api/setnel/cron"
+            "https://sui-lending-datum.vercel.app/api/setnel/cron"
           )
           fail=0
           for url in "${CRON_URLS[@]}"; do

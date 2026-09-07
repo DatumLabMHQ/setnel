@@ -7,9 +7,9 @@
 -- seed must never clobber it. Only metadata is refreshed.
 
 INSERT INTO dashboards (id, name, protocol_slug, base_url, enabled) VALUES
-  ('aave',          'Aave V3',                       'aave-v3',      'https://aave-dashboard.vercel.app',                true),
-  ('sui',           'State of SUI',                  'sui-lending',  'https://sui-lending.vercel.app',                   true),
-  ('navi',          'Navi Lending',                  'navi',         'https://sui-lending.vercel.app', false),
+  ('aave',          'Aave V3',                       'aave-v3',      'https://aave-dashboard-datum.vercel.app',                true),
+  ('sui',           'State of SUI',                  'sui-lending',  'https://sui-lending-datum.vercel.app',                   true),
+  ('navi',          'Navi Lending',                  'navi',         'https://sui-lending-datum.vercel.app', false),
   ('centrifuge',    'Centrifuge RWA',                'centrifuge',   'https://datumlabs-centrifuge.vercel.app',          false),
   ('defi_tvl',      'DeFi TVL Benchmark',            'defi-tvl',     'https://defi-tvl-dashboard.vercel.app',            false),
   ('liquidator',    'Liquidator Economy',            'liquidator',   'https://liquidator-economy-dashboard.vercel.app',  false),
