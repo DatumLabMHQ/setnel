@@ -22,7 +22,7 @@ jobs:
       - name: Trigger cross-check
         run: |
           code=$(curl -s -o /tmp/out.json -w '%{http_code}' --max-time 90 \
-            "https://setnel-hub-datum.vercel.app/api/v1/crosscheck?key=${{ secrets.SETNEL_CRON_SECRET }}")
+            "https://setnel.datumlab.xyz/api/v1/crosscheck?key=${{ secrets.SETNEL_CRON_SECRET }}")
           echo "status: $code"
           cat /tmp/out.json
           test "$code" = "200"
