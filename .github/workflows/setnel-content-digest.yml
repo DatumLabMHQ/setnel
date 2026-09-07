@@ -1,0 +1,21 @@
+name: setnel-content-digest
+# Daily email of new content signals, after the content rules have run. The scheduler worker fires it.
+on:
+  schedule:
+    - cron: "25 7 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print the digest instead of emailing it"
+        type: boolean
+        default: false
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Send (or print) the digest
+        run: |
+          out=$(curl -s --max-time 120 -w "\n%{http_code}" "https://setnel.datumlab.xyz/api/v1/content/digest?key=${{ secrets.SETNEL_CRON_SECRET }}${{ inputs.dry_run && '&dry=1' || '' }}")
+          echo "$out" | sed '$d'
+          code=$(echo "$out" | tail -1); echo "status: $code"; [ "$code" = "200" ]
