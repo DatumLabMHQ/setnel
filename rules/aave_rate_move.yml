@@ -1,0 +1,14 @@
+id: aave_rate_move
+owner: olusegun
+product: aave
+schedule: daily
+status: live
+description: A reserve over the size floor saw its supply APY move by at least the threshold in a day.
+source: aave.fct_aave_reserve_daily
+cooldown_hours: 24
+severity: info
+params:
+  min_move_pp: 2
+gates:
+  min_usd: 100000000.0
+  nonzero_prior: true

@@ -1,0 +1,11 @@
+id: moonwell_liquidation_whale
+owner: joel
+product: moonwell
+schedule: hourly
+status: waiting
+description: A single Moonwell liquidation above the collateral threshold.
+origin: lending-intelligence-terminal/alerts
+source: moonwell marts (not yet in the platform)
+needs: moonwell seed in the platform (Joel migrating the Moonwell dashboard into Atlas)
+cooldown_hours: 168
+severity: info

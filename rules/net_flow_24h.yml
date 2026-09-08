@@ -1,0 +1,23 @@
+id: net_flow_24h
+owner: joel
+product: ethereum-lending
+schedule: hourly
+status: live
+description: A covered protocol's Ethereum TVL changed by more than the 24h threshold. Warning at the major line.
+origin: lending-intelligence-terminal/alerts
+source: ref.raw_defillama_tvl
+cooldown_hours: 12
+severity: info
+params:
+  protocols:
+  - aave-v3
+  - sparklend
+  - morpho-blue
+  - fluid-lending
+  - compound-v3
+  - euler-v2
+  notable_usd: 500000000.0
+  major_usd: 2000000000.0
+gates:
+  min_usd: 100000000.0
+  nonzero_prior: true

@@ -19,6 +19,11 @@ export async function GET(req: Request) {
   const recipients = (process.env.SETNEL_CONTENT_RECIPIENTS ?? '').split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
   const d = await buildDigest(days, { force });
   if (dry) return new NextResponse(d.text, { headers: { 'content-type': 'text/plain; charset=utf-8', 'x-signal-count': String(d.count), 'x-recipients': String(recipients.length) } });
+  if (d.count === 0) {
+    // Setnel speaks only when something happened: no signals, no email.
+    await recordHeartbeat('content-digest', 'nothing new, no email sent');
+    return NextResponse.json({ sent: false, skipped: 'empty', count: 0 });
+  }
   if (!recipients.length) return NextResponse.json({ error: 'SETNEL_CONTENT_RECIPIENTS not set', count: d.count }, { status: 500 });
   if (!emailConfigured()) return NextResponse.json({ error: 'email not configured', count: d.count }, { status: 500 });
   const sent = await sendMail(d.subject, d.text, recipients);

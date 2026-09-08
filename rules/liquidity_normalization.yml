@@ -1,0 +1,20 @@
+id: liquidity_normalization
+owner: joel
+product: ethereum-lending
+schedule: hourly
+status: waiting
+description: Watchlist liquidity crossed its 30-day mean ± 1.5σ band with sustained out-of-band evidence and a non-trivial
+  magnitude (relative ≥ 10% of mean, absolute ≥ max($50M, 2% of mean), 12 samples sustained).
+origin: lending-intelligence-terminal/alerts
+source: ref.raw_defillama_tvl
+needs: 10 days of hourly platform history for the baseline (decision 2026-09-08); then port with the section 7.3 floors
+cooldown_hours: 6
+severity: info
+params:
+  sigma: 1.5
+  baseline_days: 30
+  min_rel_pct: 10
+  min_abs_usd: 50000000.0
+  min_abs_pct_of_mean: 2
+  stress_consecutive_samples: 12
+  normalize_hours: 12

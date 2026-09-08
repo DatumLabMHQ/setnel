@@ -1,16 +1,24 @@
 name: setnel-content
 
-# Content signals from the data platform: runs after the platform's 00:xx UTC full sweep and
-# the marts that follow it, so day-over-day comparisons see a complete previous day.
+# Content signals from the data platform, run by the rules engine (rules/*.yml + scripts/rules/engine.mjs).
+# The datum-scheduler worker dispatches this hourly at :25 (after the platform's hourly build) with
+# schedule=hourly, daily at 07:10 UTC with schedule=daily, and Mondays 07:15 with schedule=weekly.
 on:
-  schedule:
-    - cron: "10 7 * * *"
   workflow_dispatch:
     inputs:
+      schedule:
+        description: "Which rules to run"
+        type: choice
+        options: [hourly, daily, weekly, all]
+        default: daily
       dry_run:
         description: "Print signals instead of posting them to the Hub"
         type: boolean
         default: false
+      rule:
+        description: "Run one rule id only (optional)"
+        type: string
+        default: ""
 
 concurrency:
   group: setnel-content
@@ -27,9 +35,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - name: Run content detectors
+      - name: Run rules
         env:
           PLATFORM_DATABASE_URL: ${{ secrets.PLATFORM_DATABASE_URL }}
           SETNEL_DASHBOARD_SECRET_PLATFORM: ${{ secrets.SETNEL_DASHBOARD_SECRET_PLATFORM }}
           SETNEL_HUB_URL: https://setnel.datumlab.xyz
-        run: node scripts/detectors/content.mjs ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: node scripts/rules/engine.mjs --schedule ${{ inputs.schedule || 'daily' }} ${{ inputs.rule && format('--rule {0}', inputs.rule) || '' }} ${{ inputs.dry_run && '--dry-run' || '' }}

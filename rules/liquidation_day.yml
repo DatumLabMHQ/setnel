@@ -1,0 +1,11 @@
+id: liquidation_day
+owner: olusegun
+product: sui
+schedule: daily
+status: live
+description: A Sui protocol liquidated more than the debt floor in a day.
+source: sui.fct_sui_liquidations
+cooldown_hours: 24
+severity: info
+params:
+  min_debt_usd: 1000000.0

@@ -4,6 +4,8 @@ import { getDetectorConfigMap, getChannelConfigMap, channelsFor, getEscalation, 
 import { renotifyWindowMs, isSeverityEscalation, shouldRenotify } from './incident-logic';
 import { cached } from './config-cache';
 import type { IncomingEvent } from './types';
+import { sendMail } from './notify';
+import { signalBlock } from './digest';
 
 type IngestResult = { stored: number; incidentsOpened: number; notified: number };
 
@@ -47,21 +49,33 @@ export async function ingestBatch(
     const exp = ev.payload?.exposureUsd;
     const exposureUsd = typeof exp === 'number' && Number.isFinite(exp) ? exp : null;
 
-    // Content signals: store once per fingerprint (7-day window), never open an incident,
-    // never page. The Content page and /api/v1/signals read them back.
+    // Content signals: store once per fingerprint per cooldown window (the rule's cooldown_hours,
+    // default 7 days), never open an incident, never page. Warning and above are emailed at once;
+    // the rest wait for the daily brief. The Content page and /api/v1/signals read them back.
     if (ev.category === 'signal') {
+      const cooldownHours = ev.cooldownHours ?? 168;
       const dup = (await sql`
-        SELECT 1 FROM events WHERE category = 'signal' AND fingerprint = ${fingerprint} AND fired_at > now() - interval '7 days' LIMIT 1
+        SELECT 1 FROM events WHERE category = 'signal' AND fingerprint = ${fingerprint}
+          AND fired_at > now() - make_interval(hours => ${cooldownHours}) LIMIT 1
       `) as unknown[];
       if (dup.length > 0) continue;
-      await sql`
+      const inserted = (await sql`
         INSERT INTO events
           (dashboard_id, detector_id, category, severity, message, payload, link_path, fingerprint, incident_id, signal_status)
         VALUES
           (${dashboard.id}, ${ev.detectorId}, 'signal', ${severity}, ${ev.message},
            ${JSON.stringify(ev.payload ?? {})}, ${linkPath}, ${fingerprint}, NULL, 'new')
-      `;
+        RETURNING id, fired_at
+      `) as { id: string | number; fired_at: string }[];
       stored += 1;
+      if (severity !== 'info') {
+        const recipients = (process.env.SETNEL_CONTENT_RECIPIENTS ?? '').split(/[,\s]+/).map((r) => r.trim()).filter(Boolean);
+        if (recipients.length) {
+          const row = { id: String(inserted[0].id), dashboard_id: dashboard.id, dashboard_name: dashboard.name, detector_id: ev.detectorId, fingerprint, severity, message: ev.message, payload: (ev.payload ?? {}) as never, link_path: linkPath, signal_status: 'new' as const, fired_at: String(inserted[0].fired_at) };
+          const sent = await sendMail(`Setnel ${severity}: ${ev.message}`, [signalBlock(row), '', `Sent at once because the rule marks this ${severity}. The daily brief will carry it too.`, `Content page: ${(process.env.SETNEL_SELF_URL || 'https://setnel.datumlab.xyz').replace(/\/$/, '')}/setnel/content`].join('\n'), recipients);
+          if (sent) notified += 1;
+        }
+      }
       continue;
     }
 

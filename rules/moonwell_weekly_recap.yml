@@ -1,0 +1,11 @@
+id: moonwell_weekly_recap
+owner: joel
+product: moonwell
+schedule: weekly
+status: waiting
+description: Composite recap of the previous Monday to Sunday week.
+origin: lending-intelligence-terminal/alerts
+source: moonwell marts (not yet in the platform)
+needs: moonwell seed in the platform (Joel migrating the Moonwell dashboard into Atlas)
+cooldown_hours: 144
+severity: info

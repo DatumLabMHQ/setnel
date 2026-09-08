@@ -1,0 +1,18 @@
+id: tvl_wow
+owner: joel
+product: all
+schedule: daily
+status: live
+description: Total TVL moved week over week by 2% at $1B and above, or 5% below that. From the SparkLend weekly digest rule,
+  widened to every protocol in ref.
+source: ref.raw_defillama_tvl
+cooldown_hours: 168
+severity: info
+params:
+  pct_large: 2
+  pct_small: 5
+  large_tvl_usd: 1000000000.0
+  exclude: []
+gates:
+  min_usd: 100000000.0
+  nonzero_prior: true

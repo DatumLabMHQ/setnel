@@ -1,0 +1,14 @@
+id: sui_tvl_move
+owner: olusegun
+product: sui
+schedule: daily
+status: live
+description: A Sui lending protocol's net TVL moved by the threshold in a day.
+source: sui.fct_sui_protocol_tvl_daily
+cooldown_hours: 24
+severity: info
+params:
+  min_pct: 8
+gates:
+  min_usd: 5000000.0
+  nonzero_prior: true

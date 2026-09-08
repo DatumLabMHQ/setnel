@@ -1,4 +1,6 @@
 // Setnel — content-signal detectors over the Datum data platform.
+// SUPERSEDED 2026-09-08 by rules/*.yml + scripts/rules/engine.mjs (same rules, thresholds in the manifest,
+// shared noise gates, per-rule cooldowns, backtest). Kept for reference; the workflow no longer runs it.
 //
 // Reads the platform's curated tables (read-only URL) and posts category 'signal' events to the
 // Hub: a headline, an angle, a paste-ready draft, the handles to tag and the numbers behind it.

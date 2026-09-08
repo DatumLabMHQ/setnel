@@ -1,0 +1,17 @@
+id: apy_dispersion_blowout
+owner: joel
+product: ethereum-lending
+schedule: hourly
+status: waiting
+description: Supply-APY dispersion across protocols for a stablecoin exceeded the 30-day mean by 2σ, with the section 7.3
+  floors (dispersion ≥ 30 bps and ≥ 1.5x the 30-day mean).
+origin: lending-intelligence-terminal/alerts
+source: aave.fct_aave_reserve_daily + morpho.fct_morpho_market_daily
+needs: 10 days of platform history (decision 2026-09-08) and a cross-protocol stablecoin APY view
+cooldown_hours: 12
+severity: info
+params:
+  sigma: 2
+  baseline_days: 30
+  min_dispersion_bps: 30
+  min_multiple_of_mean: 1.5

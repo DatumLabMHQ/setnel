@@ -1,0 +1,17 @@
+id: daily_volume_spike
+owner: joel
+product: sui
+schedule: daily
+status: live
+description: A protocol's 24h liquidation volume exceeded a multiple of its trailing 30-day daily average. Critical at the
+  higher multiple. Sui today; Ethereum lending when that seed lands.
+origin: lending-intelligence-terminal/alerts
+source: sui.fct_sui_liquidations
+cooldown_hours: 12
+severity: warning
+params:
+  baseline_days: 30
+  min_baseline_days: 10
+  multiple: 2
+  critical_multiple: 5
+  min_volume_usd: 250000.0

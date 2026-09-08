@@ -1,0 +1,11 @@
+id: morpho_top_curator
+owner: olusegun
+product: morpho
+schedule: daily
+status: live
+description: The largest Morpho curator changed, or the leader's share moved by the threshold in a day.
+source: morpho.fct_morpho_curator_daily
+cooldown_hours: 24
+severity: info
+params:
+  share_shift_pp: 2

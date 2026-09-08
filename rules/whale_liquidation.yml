@@ -1,0 +1,14 @@
+id: whale_liquidation
+owner: joel
+product: sui
+schedule: hourly
+status: live
+description: A single liquidation seized more than the collateral threshold. Critical at the major line. Runs on Sui today;
+  Ethereum lending when that liquidations seed lands.
+origin: lending-intelligence-terminal/alerts
+source: sui.fct_sui_liquidations
+cooldown_hours: 1
+severity: warning
+params:
+  min_collateral_usd: 1000000.0
+  critical_collateral_usd: 10000000.0

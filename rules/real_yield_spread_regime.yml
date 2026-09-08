@@ -1,0 +1,13 @@
+id: real_yield_spread_regime
+owner: joel
+product: ethereum-lending
+schedule: hourly
+status: waiting
+description: Blended stablecoin APY minus the 4-week T-bill rate crossed zero or moved more than 25 bps in 24 hours.
+origin: lending-intelligence-terminal/alerts
+source: ref (T-bill series, not yet loaded)
+needs: a FRED 4-week T-bill series in ref (small seed)
+cooldown_hours: 24
+severity: info
+params:
+  move_bps: 25

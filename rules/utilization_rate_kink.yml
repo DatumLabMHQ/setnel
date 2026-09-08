@@ -1,0 +1,19 @@
+id: utilization_rate_kink
+owner: joel
+product: aave
+schedule: hourly
+status: live
+description: A stablecoin market on Aave v3 crossed 90% or 95% utilization from below. One cooldown per market and per threshold.
+  Warning at 95%.
+origin: lending-intelligence-terminal/alerts
+source: aave.fct_aave_reserve_daily
+cooldown_hours: 4
+severity: info
+params:
+  symbols:
+  - USDC
+  - USDT
+  thresholds:
+  - 90
+  - 95
+  min_supply_usd: 10000000.0

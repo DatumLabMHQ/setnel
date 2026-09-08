@@ -1,0 +1,13 @@
+id: centrifuge_flow
+owner: olusegun
+product: centrifuge
+schedule: daily
+status: live
+description: A Centrifuge token saw net flow over the floor in a day, or a pool set a 90-day TVL high.
+source: centrifuge.fct_centrifuge_flows_daily
+cooldown_hours: 24
+severity: info
+params:
+  min_net_flow_usd: 5000000.0
+  high_window_days: 90
+  high_min_tvl_usd: 50000000.0

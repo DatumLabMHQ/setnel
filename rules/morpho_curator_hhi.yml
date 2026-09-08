@@ -1,0 +1,17 @@
+id: morpho_curator_hhi
+owner: joel
+product: morpho
+schedule: daily
+status: live
+description: Combined V1+V2 curator HHI crossed 2500 or 3000, moved more than 100 points in 7 days, or the top-3 share moved
+  more than 1pp in a day.
+origin: lending-intelligence-terminal/alerts
+source: morpho.fct_morpho_curator_daily
+cooldown_hours: 24
+severity: info
+params:
+  lines:
+  - 2500
+  - 3000
+  week_points: 100
+  top3_pp: 1

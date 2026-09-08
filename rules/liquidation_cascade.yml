@@ -1,0 +1,11 @@
+id: liquidation_cascade
+owner: joel
+product: ethereum-lending
+schedule: hourly
+status: waiting
+description: 24h liquidation volume for a protocol exceeded its threshold. Warning at the threshold, critical at 2x.
+origin: lending-intelligence-terminal/alerts
+source: ethereum lending liquidations (not yet in the platform)
+needs: Ethereum lending liquidations seed (Aave, Morpho, Spark); Sui runs under liquidation_day today
+cooldown_hours: 6
+severity: warning

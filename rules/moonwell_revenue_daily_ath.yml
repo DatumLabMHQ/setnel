@@ -1,0 +1,11 @@
+id: moonwell_revenue_daily_ath
+owner: joel
+product: moonwell
+schedule: daily
+status: waiting
+description: Moonwell's daily protocol revenue set a new all-time high.
+origin: lending-intelligence-terminal/alerts
+source: moonwell marts (not yet in the platform)
+needs: moonwell seed in the platform (Joel migrating the Moonwell dashboard into Atlas)
+cooldown_hours: 24
+severity: info

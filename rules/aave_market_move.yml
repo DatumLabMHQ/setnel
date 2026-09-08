@@ -1,0 +1,15 @@
+id: aave_market_move
+owner: olusegun
+product: aave
+schedule: daily
+status: live
+description: An Aave market's total supply moved by at least the percent and dollar floors in a day.
+source: aave.fct_aave_market_daily
+cooldown_hours: 24
+severity: info
+params:
+  min_pct: 5
+  min_delta_usd: 50000000.0
+gates:
+  min_usd: 50000000.0
+  nonzero_prior: true

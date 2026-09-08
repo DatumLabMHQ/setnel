@@ -1,0 +1,15 @@
+id: morpho_vault_move
+owner: olusegun
+product: morpho
+schedule: daily
+status: live
+description: A listed vault's TVL moved by at least the percent and dollar floors in a day.
+source: morpho.fct_morpho_vault_daily
+cooldown_hours: 24
+severity: info
+params:
+  min_pct: 15
+  min_delta_usd: 20000000.0
+gates:
+  min_usd: 20000000.0
+  nonzero_prior: true

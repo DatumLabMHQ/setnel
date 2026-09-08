@@ -1,0 +1,11 @@
+id: moonwell_supply_delta_7d
+owner: joel
+product: moonwell
+schedule: daily
+status: waiting
+description: A Moonwell market's total supply moved ≥ 10% week over week, measured in token units. Critical above 25%.
+origin: lending-intelligence-terminal/alerts
+source: moonwell marts (not yet in the platform)
+needs: moonwell seed in the platform (Joel migrating the Moonwell dashboard into Atlas)
+cooldown_hours: 168
+severity: info

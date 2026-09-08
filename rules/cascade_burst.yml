@@ -1,0 +1,14 @@
+id: cascade_burst
+owner: joel
+product: ethereum-lending
+schedule: hourly
+status: waiting
+description: 10 or more liquidation events in a single block, or 50 or more in one hour.
+origin: lending-intelligence-terminal/alerts
+source: ethereum lending liquidations (not yet in the platform)
+needs: Ethereum lending liquidations seed with block numbers
+cooldown_hours: 2
+severity: warning
+params:
+  per_block: 10
+  per_hour: 50

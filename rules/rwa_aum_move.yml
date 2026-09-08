@@ -1,0 +1,14 @@
+id: rwa_aum_move
+owner: olusegun
+product: rwa
+schedule: daily
+status: live
+description: Tokenized-RWA AUM on Aave Horizon moved by the threshold in a day.
+source: rwa.fct_rwa_totals_daily
+cooldown_hours: 24
+severity: info
+params:
+  min_pct: 3
+gates:
+  min_usd: 10000000.0
+  nonzero_prior: true

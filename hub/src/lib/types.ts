@@ -26,6 +26,8 @@ export const IncomingEventSchema = z.object({
   // Deep-link path within the source dashboard, e.g. '/markets/USDT'.
   linkPath: z.string().startsWith('/').max(500).optional(),
   payload: z.record(z.unknown()).optional(),
+  // Content signals only: hours the hub keeps one signal per fingerprint (the rule's cooldown). Default 168.
+  cooldownHours: z.number().int().min(1).max(24 * 366).optional(),
 });
 
 // Metric samples a detector run reports every time (not just on breach).
@@ -45,3 +47,16 @@ export const EventBatchSchema = z.object({
 export type IncomingEvent = z.infer<typeof IncomingEventSchema>;
 export type MetricSample = z.infer<typeof MetricSampleSchema>;
 export type EventBatch = z.infer<typeof EventBatchSchema>;
+
+// The rules manifest a detector run posts (rules/*.yml in this repo), so the Content page shows what can fire.
+export const RuleManifestSchema = z.object({
+  dashboardId: z.string().min(1),
+  rules: z.array(z.object({
+    id: z.string().min(1).max(80), owner: z.string().max(40), product: z.string().max(60),
+    schedule: z.enum(['hourly', 'daily', 'weekly']), status: z.enum(['live', 'waiting', 'off']),
+    needs: z.string().max(500).nullable().optional(), description: z.string().max(1000),
+    severity: z.enum(['info', 'warning', 'critical', 'emergency']), cooldown_hours: z.number(),
+    params: z.record(z.unknown()).optional(), gates: z.record(z.unknown()).optional(), source: z.string().max(200).nullable().optional(),
+  })).max(200),
+  run: z.object({ schedule: z.string(), today: z.string(), ran: z.array(z.string()), signals: z.number(), errors: z.array(z.unknown()) }).optional(),
+});

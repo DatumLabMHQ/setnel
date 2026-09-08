@@ -10,7 +10,7 @@ function fmtNumbers(n: Record<string, number | string | null> | undefined): stri
   return Object.entries(n).filter(([, v]) => v != null).map(([k, v]) => `${k} ${typeof v === 'number' ? (Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : Number.isInteger(v) ? v : v.toFixed(2)) : v}`).join(' · ');
 }
 
-function block(s: SignalRow): string {
+export function signalBlock(s: SignalRow): string {
   const p = s.payload ?? {};
   const lines = [`• ${s.message}`];
   if (p.angle && p.angle !== s.message) lines.push(`  angle: ${p.angle}`);
@@ -30,7 +30,7 @@ export async function buildDigest(days = 1, opts: { brief?: boolean; force?: boo
   if (opts.brief !== false) { try { brief = await composeBrief(date, signals, opts.force); } catch (e) { console.warn('[digest] brief skipped:', e instanceof Error ? e.message : e); } }
   const byProduct = new Map<string, SignalRow[]>();
   for (const s of signals) { const k = (s.payload?.product ?? s.dashboard_id) || 'other'; byProduct.set(k, [...(byProduct.get(k) ?? []), s]); }
-  const sections = [...byProduct.entries()].map(([prod, rows]) => `${prod.toUpperCase()} (${rows.length})\n${'-'.repeat(prod.length + 4)}\n${rows.map(block).join('\n\n')}`);
+  const sections = [...byProduct.entries()].map(([prod, rows]) => `${prod.toUpperCase()} (${rows.length})\n${'-'.repeat(prod.length + 4)}\n${rows.map(signalBlock).join('\n\n')}`);
   const text = [
     `Setnel content signals · ${date}`,
     `${signals.length} new signal${signals.length === 1 ? '' : 's'} in the last ${days * 24} hours. Every number comes from the Datum data platform's curated tables; each block names its rule and source so the figure can be reproduced.`,

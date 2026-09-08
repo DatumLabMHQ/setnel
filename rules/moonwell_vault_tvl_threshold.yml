@@ -1,0 +1,11 @@
+id: moonwell_vault_tvl_threshold
+owner: joel
+product: moonwell
+schedule: hourly
+status: waiting
+description: Combined Moonwell Morpho-vault TVL crossed one of the configured USD thresholds. Mirrors OKR KR4.3.
+origin: lending-intelligence-terminal/alerts
+source: moonwell marts (not yet in the platform)
+needs: moonwell seed in the platform (Joel migrating the Moonwell dashboard into Atlas)
+cooldown_hours: 168
+severity: info

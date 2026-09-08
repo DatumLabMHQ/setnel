@@ -2,12 +2,13 @@ import { redirect } from 'next/navigation';
 import { isAuthed } from '@/lib/session';
 import { getSignals, getSignalCounts, type SignalStatus } from '@/lib/signals';
 import { getBrief } from '@/lib/brief';
+import { getRuleManifest } from '@/lib/rules';
 import { markSignalUsed, dismissSignal, reopenSignal } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 // Content: story angles the data platform surfaced, with a draft and the handles to tag.
-// Detectors: scripts/detectors/content.mjs (runs daily, reads the platform's curated tables).
+// Rules: rules/*.yml run by scripts/rules/engine.mjs (hourly and daily, reads the platform's curated tables).
 // Nothing here pages anyone; it is an editorial queue.
 
 const TABS: { k: SignalStatus | 'all'; label: string }[] = [
@@ -32,7 +33,7 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const status = (TABS.some((t) => t.k === sp.status) ? sp.status : 'new') as SignalStatus | 'all';
   const days = sp.days ? Math.max(1, Math.min(90, Number(sp.days))) : 14;
-  const [signals, counts, brief] = await Promise.all([getSignals({ status, days }), getSignalCounts(days), getBrief(new Date().toISOString().slice(0, 10))]);
+  const [signals, counts, brief, rules] = await Promise.all([getSignals({ status, days }), getSignalCounts(days), getBrief(new Date().toISOString().slice(0, 10)), getRuleManifest()]);
 
   return (
     <>
@@ -112,6 +113,24 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
             })}
           </div>
         )}
+      </section>
+      <section className="panel">
+        <div className="panel-head"><h2>Rules</h2><span className="panel-note" style={{ margin: 0 }}>{rules.filter((r) => r.status === 'live').length} live · {rules.filter((r) => r.status === 'waiting').length} waiting for data · thresholds change by pull request in setnel/rules</span></div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="table" style={{ fontSize: 13 }}>
+            <thead><tr><th>Rule</th><th>Product</th><th>Owner</th><th>Runs</th><th>Cooldown</th><th>Status</th><th>What fires</th></tr></thead>
+            <tbody>
+              {rules.map((r) => (
+                <tr key={r.id} style={{ opacity: r.status === 'live' ? 1 : 0.6 }}>
+                  <td><code>{r.id}</code>{r.severity !== 'info' ? <span className="chip" style={{ marginLeft: 6 }}>{r.severity}</span> : null}</td>
+                  <td>{r.product}</td><td>{r.owner}</td><td>{r.schedule}</td><td>{r.cooldown_hours}h</td>
+                  <td>{r.status}{r.last_ran_at ? <div className="muted" style={{ fontSize: 11 }}>ran {fmtTime(r.last_ran_at)}</div> : null}</td>
+                  <td style={{ maxWidth: 520 }}>{r.description}{r.needs ? <div className="muted" style={{ fontSize: 12 }}>needs: {r.needs}</div> : null}{Object.keys(r.params ?? {}).length ? <div className="muted" style={{ fontSize: 11 }}>params {JSON.stringify(r.params)}{Object.keys(r.gates ?? {}).length ? ` · gates ${JSON.stringify(r.gates)}` : ''}</div> : null}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </>
   );
