@@ -10,7 +10,7 @@ export async function loadDefillama({ sql, today, days }) {
   for (const r of rows) {
     const s = (bySlug[r.slug] ??= { eth: {}, total: {} });
     const d = r.day instanceof Date ? r.day.toISOString().slice(0, 10) : String(r.day).slice(0, 10);
-    if (r.chain === 'Ethereum') s.eth[d] = Number(r.tvl_usd);
+    if (String(r.chain).toLowerCase() === 'ethereum') s.eth[d] = Number(r.tvl_usd);   // ref stores chain names lowercase
     s.total[d] = (s.total[d] ?? 0) + Number(r.tvl_usd);
   }
   return bySlug;
