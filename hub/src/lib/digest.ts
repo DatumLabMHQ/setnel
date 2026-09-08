@@ -34,11 +34,9 @@ export async function buildDigest(days = 1, opts: { brief?: boolean; force?: boo
   const text = [
     `Setnel content signals · ${date}`,
     `${signals.length} new signal${signals.length === 1 ? '' : 's'} in the last ${days * 24} hours. Every number comes from the Datum data platform's curated tables; each block names its rule and source so the figure can be reproduced.`,
-    '',
-    ...(brief ? [`THE DAY IN THREE LAYERS (stop at any boundary)`, briefText(brief), ''] : []),
+    ...(brief ? [`THE DAY IN THREE LAYERS (stop at any boundary)`, briefText(brief)] : []),
     `THE SIGNALS`,
     ...(sections.length ? sections : ['Nothing new today. The rules ran and found no move worth writing about.']),
-    '',
     `Mark signals used or dismissed on the Content page: ${HUB}/setnel/content`,
     `Definitions: datum-context/metrics. Disagreements with other sources: datum-context/evals/divergence-log.md.`,
   ].join('\n\n');
