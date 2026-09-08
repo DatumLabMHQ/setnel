@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { isAuthed } from '@/lib/session';
 import { getSignals, getSignalCounts, type SignalStatus } from '@/lib/signals';
+import { getBrief } from '@/lib/brief';
 import { markSignalUsed, dismissSignal, reopenSignal } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,7 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const status = (TABS.some((t) => t.k === sp.status) ? sp.status : 'new') as SignalStatus | 'all';
   const days = sp.days ? Math.max(1, Math.min(90, Number(sp.days))) : 14;
-  const [signals, counts] = await Promise.all([getSignals({ status, days }), getSignalCounts(days)]);
+  const [signals, counts, brief] = await Promise.all([getSignals({ status, days }), getSignalCounts(days), getBrief(new Date().toISOString().slice(0, 10))]);
 
   return (
     <>
@@ -42,6 +43,14 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
         <div className="kpi"><div className="kpi-label">Machine door</div><div className="kpi-value" style={{ fontSize: 14 }}><code>/api/v1/signals</code></div><div className="kpi-sub">same JSON, for the MCP server and agents</div></div>
       </section>
 
+      {brief ? (
+        <section className="panel">
+          <div className="panel-head"><h2>The day in three layers</h2><span className="panel-note" style={{ margin: 0 }}>{brief.day} · written by {brief.model} from {brief.signal_ids.length} signals · stop at any boundary</span></div>
+          {[['Layer 1', brief.layer1], ['Layer 2', brief.layer2], ['Layer 3', brief.layer3]].map(([label, body]) => (
+            <div key={label} style={{ marginBottom: 12 }}><div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>{body.split(/\n\s*\n/).map((para, i) => <p key={i} style={{ margin: '0 0 8px', maxWidth: '72ch' }}>{para}</p>)}</div>
+          ))}
+        </section>
+      ) : null}
       <section className="panel">
         <div className="panel-head">
           <h2>Content signals</h2>
