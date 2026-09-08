@@ -22,7 +22,9 @@ function block(s: SignalRow): string {
 }
 
 export async function buildDigest(days = 1, opts: { brief?: boolean; force?: boolean } = {}): Promise<{ subject: string; text: string; count: number; signals: SignalRow[]; brief: Brief | null }> {
-  const signals = await getSignals({ status: 'new', days, limit: 200 });
+  // Same rule + same headline within the window (a manual run beside the scheduled one) counts once: keep the latest.
+  const seen = new Set<string>();
+  const signals = (await getSignals({ status: 'new', days, limit: 200 })).filter((s) => { const k = `${s.detector_id}|${s.message}`; if (seen.has(k)) return false; seen.add(k); return true; });
   const date = new Date().toISOString().slice(0, 10);
   let brief: Brief | null = null;
   if (opts.brief !== false) { try { brief = await composeBrief(date, signals, opts.force); } catch (e) { console.warn('[digest] brief skipped:', e instanceof Error ? e.message : e); } }
@@ -32,8 +34,8 @@ export async function buildDigest(days = 1, opts: { brief?: boolean; force?: boo
   const text = [
     `Setnel content signals · ${date}`,
     `${signals.length} new signal${signals.length === 1 ? '' : 's'} in the last ${days * 24} hours. Every number comes from the Datum data platform's curated tables; each block names its rule and source so the figure can be reproduced.`,
-    ...(brief ? ['', `THE DAY IN THREE LAYERS (stop at any boundary)`, briefText(brief)] : []),
     '',
+    ...(brief ? [`THE DAY IN THREE LAYERS (stop at any boundary)`, briefText(brief), ''] : []),
     `THE SIGNALS`,
     ...(sections.length ? sections : ['Nothing new today. The rules ran and found no move worth writing about.']),
     '',
