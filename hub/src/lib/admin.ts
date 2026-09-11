@@ -159,7 +159,7 @@ export async function getSloTargets(): Promise<SloTargets> {
 // Expected cadence per job (minutes); a job is "stale" past ~3x its interval.
 export const CRON_INTERVALS_MIN: Record<string, number> = {
   ingest: 5, analyze: 30, crosscheck: 60, watchdog: 15, rwa: 15, resolve: 30, selfalert: 60,
-  'rules-hourly': 60, 'rules-daily': 1440, 'rules-weekly': 10080, 'content-digest': 1440,
+  'rules-hourly': 60, 'rules-daily': 1440, 'rules-weekly': 10080, 'content-digest': 1440, 'escalations-weekly': 10080,
 };
 export async function recordHeartbeat(job: string, detail?: string): Promise<void> {
   try {

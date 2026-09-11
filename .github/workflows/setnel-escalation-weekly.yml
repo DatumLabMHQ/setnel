@@ -1,0 +1,22 @@
+name: setnel-escalation-weekly
+
+# Once a week: every critical incident that went unacknowledged past the escalation window, in one email
+# to all recipients and one Telegram post. Dispatched Mondays 08:00 UTC by the datum-scheduler worker.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print the summary instead of sending it"
+        type: boolean
+        default: false
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call the hub
+        run: |
+          out=$(curl -s --max-time 120 -w "\n%{http_code}" "https://setnel.datumlab.xyz/api/v1/escalations/weekly?key=${{ secrets.SETNEL_CRON_SECRET }}${{ inputs.dry_run && '&dry=1' || '' }}")
+          echo "$out"
+          [ "$(echo "$out" | tail -1)" = "200" ]
