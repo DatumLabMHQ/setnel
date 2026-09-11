@@ -4,8 +4,7 @@ name: setnel-rwa
 # worker's snapshot and posts events + samples to the Setnel Hub every 15 min.
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'
+  # schedule: dispatched by the datum-scheduler worker (Cloudflare) on time; GitHub's own cron ran 3 times in 3 days.
   workflow_dispatch: {}
 
 concurrency:

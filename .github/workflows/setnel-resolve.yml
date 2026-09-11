@@ -5,8 +5,7 @@ name: setnel-resolve
 # dumb HTTP trigger; the logic lives in /api/v1/cron/resolve.
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'
+  # schedule: dispatched by the datum-scheduler worker (Cloudflare) on time; GitHub's own cron ran 3 times in 3 days.
   workflow_dispatch: {}
 
 concurrency:

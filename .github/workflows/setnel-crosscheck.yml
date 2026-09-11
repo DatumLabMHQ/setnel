@@ -6,8 +6,7 @@ name: setnel-crosscheck
 # hourly is plenty and keeps DeFiLlama calls light.
 
 on:
-  schedule:
-    - cron: '17 * * * *'
+  # schedule: dispatched by the datum-scheduler worker (Cloudflare) on time; GitHub's own cron ran 3 times in 3 days.
   workflow_dispatch: {}
 
 concurrency:

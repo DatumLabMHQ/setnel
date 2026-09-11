@@ -107,7 +107,8 @@ async function main() {
 
   if (problems.length) {
     await tg('⚠️ Setnel watchdog:\n• ' + problems.join('\n• '));
-    process.exitCode = 1;
+    // The Telegram page is the alert. A red workflow run only adds a GitHub failure email on top.
+    console.log('::warning::' + problems.join(' | '));
   } else {
     console.log(`watchdog ok — last check ${json.lastCheckAgeMin}m ago, ${json.dashboards?.length || 0} dashboards healthy`);
   }

@@ -4,8 +4,7 @@ name: setnel-analyze
 # rules over active incidents (correlated conditions → escalation).
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'
+  # schedule: dispatched by the datum-scheduler worker (Cloudflare) on time; GitHub's own cron ran 3 times in 3 days.
   workflow_dispatch: {}
 
 concurrency:
