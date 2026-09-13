@@ -75,15 +75,21 @@ async function main() {
 
   // 4) Curated numbers as samples, so the Hub's adaptive baselines learn them and cross-checks can use them.
   const tvl = await sql`
-    select protocol, tvl_net_usd, defillama_tvl_usd, divergence_vs_defillama from sui.fct_sui_protocol_tvl_daily
+    select protocol, tvl_net_usd, defillama_tvl_usd, divergence_vs_defillama, method from sui.fct_sui_protocol_tvl_daily
     where (protocol, day) in (select protocol, max(day) from sui.fct_sui_protocol_tvl_daily group by 1)`;
   for (const r of tvl) {
     samples.push({ metricKey: `platform.sui.${r.protocol}.tvl_net`, value: Number(r.tvl_net_usd) || 0 });
     const div = r.divergence_vs_defillama == null ? null : Number(r.divergence_vs_defillama);
+    // A 'remote' protocol publishes DefiLlama's own figure (its LP wrappers are not
+    // unwrapped yet, recorded in datum-context/evals/divergence-log.md), so the
+    // published number cannot diverge from the reference. Comparing our partial decode
+    // against it printed "$9.4M diverges -68.7% from $9.4M" 100+ times a day.
+    if (r.method === 'remote') continue;
+    // Whole percent: jitter in the last decimal must not read as a new condition.
     if (div != null && Math.abs(div) > 0.15) {
       events.push({
         detectorId: 'platform.reconciliation', category: 'technical', severity: 'warning',
-        message: `${r.protocol} net TVL ${fmtUsd(Number(r.tvl_net_usd))} diverges ${(div * 100).toFixed(1)}% from DefiLlama ${fmtUsd(Number(r.defillama_tvl_usd))}`,
+        message: `${r.protocol} net TVL ${fmtUsd(Number(r.tvl_net_usd))} is ${Math.round(Math.abs(div) * 100)}% ${div < 0 ? 'below' : 'above'} DefiLlama ${fmtUsd(Number(r.defillama_tvl_usd))}`,
         fingerprint: `platform.reconciliation:sui.${r.protocol}`, linkPath: '/', payload: { ...r },
       });
     }

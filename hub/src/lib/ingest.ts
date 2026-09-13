@@ -108,8 +108,11 @@ export async function ingestBatch(
       const escalated = isSeverityEscalation(severity, inc.severity);
       const muted = Boolean(inc.muted_until && new Date(inc.muted_until).getTime() > Date.now());
       const acked = Boolean(inc.acknowledged_at);
-      const windowMs = renotifyWindowMs(acked, severity);
-      shouldNotify = shouldRenotify({ muted, escalated, notifiedAt: inc.notified_at, nowMs: Date.now(), windowMs });
+      // An identical message means an identical reading: the detector re-ran and
+      // nothing moved. Record it, never re-page on it.
+      const unchanged = inc.message === ev.message;
+      const windowMs = renotifyWindowMs(acked, severity, inc.opened_at);
+      shouldNotify = shouldRenotify({ muted, escalated, unchanged, notifiedAt: inc.notified_at, nowMs: Date.now(), windowMs });
 
       const newSeverity = escalated ? severity : inc.severity;
       await sql`

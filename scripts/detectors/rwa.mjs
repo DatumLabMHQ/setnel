@@ -18,7 +18,15 @@ const STALE_H = 24;          // snapshot older than this = indexer/data stopped
 const AUM_MAX = 20e9;        // rwa_aum above this = bad data (normal ~$5.5B)
 const AUM_MIN = 0.5e9;       // ...or a collapse
 const RECON_GAP_PCT = 5;     // dashboard's own DeFiLlama reconciliation gap
-const DEPEG_PCT = 1;
+// Stablecoin depeg. Only BELOW peg threatens a lending market: collateral worth less
+// than the protocol assumes it is. Above peg is information, never a page. Assets with
+// a designed trading band get their own: LUSD has a hard $1.00 floor (redeemable 1:1
+// for collateral) and a soft ceiling near $1.10 (the 110% minimum collateral ratio),
+// so $1.01 is LUSD working, not LUSD breaking. The old symmetric 1% band paged 289
+// times in 24h on 2026-09-13 for exactly that.
+const DEPEG_BAND = { low: 0.98, high: 1.03 };
+const DEPEG_BANDS = { LUSD: { low: 0.98, high: 1.12 } };
+const DEPEG_CRITICAL_EXPOSURE_USD = 10e6;
 
 const STABLES = new Set(['USDC', 'USDT', 'DAI', 'GHO', 'USDS', 'PYUSD', 'FRAX', 'RLUSD', 'USDe']);
 
@@ -94,13 +102,17 @@ async function main() {
     const price = Number(r.oracle_price_usd);
     if (!sym || r.asset_class !== 'Stablecoin' || !price || (r.supplied_usd ?? 0) < 1e6) continue;
     const devPct = (price - 1) * 100;
-    if (Math.abs(devPct) > DEPEG_PCT) {
-      events.push({
-        detectorId: 'rwa.stablecoin-depeg', category: 'depegging', severity: 'critical',
-        message: `${sym} at $${price.toFixed(4)} (${devPct > 0 ? '+' : ''}${devPct.toFixed(2)}% off peg)`,
-        fingerprint: `rwa.depeg:${sym}`, linkPath: '/', payload: { symbol: sym, price, devPct, exposureUsd: r.supplied_usd },
-      });
-    }
+    const band = DEPEG_BANDS[sym] ?? DEPEG_BAND;
+    if (price >= band.low && price <= band.high) continue;
+    const below = price < band.low;
+    const exposure = Number(r.supplied_usd) || 0;
+    const severity = below && exposure >= DEPEG_CRITICAL_EXPOSURE_USD ? 'critical' : 'warning';
+    events.push({
+      detectorId: 'rwa.stablecoin-depeg', category: 'depegging', severity,
+      message: `${sym} at $${price.toFixed(4)} (${devPct > 0 ? '+' : ''}${devPct.toFixed(2)}% ${below ? 'below' : 'above'} peg, ${fmtUsd(exposure)} supplied)`,
+      fingerprint: `rwa.depeg:${sym}:${below ? 'below' : 'above'}`, linkPath: '/',
+      payload: { symbol: sym, price, devPct, band, direction: below ? 'below' : 'above', exposureUsd: exposure },
+    });
   }
 
   const hub = await post(events, samples);

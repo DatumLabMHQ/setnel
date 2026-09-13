@@ -20,10 +20,19 @@ const Z = Number(process.env.SETNEL_BASELINE_Z || '3');
 const MIN_PCT = Number(process.env.SETNEL_BASELINE_MIN_PCT || '8'); // ignore tiny moves
 const WINDOW = Number(process.env.SETNEL_BASELINE_WINDOW || '400'); // trailing samples
 
-type Meta = { exposure: (v: number) => number | null; fmt: (v: number) => string };
+type Meta = {
+  exposure: (v: number) => number | null;
+  fmt: (v: number) => string;
+  /** Absolute floor: the latest value must reach this before a deviation can fire. */
+  floor?: number;
+};
 
 // Interpret a metric key: how to format it and whether it carries $ exposure.
 function metricMeta(key: string): Meta {
+  // Freshness metrics carry their own meaning: data a few seconds old is healthy no
+  // matter how far that sits from a 2-second baseline. Only a real staleness budget
+  // counts. (2026-09-13: rwa.data_age_hours paged critical for 8-second-old data.)
+  if (key.endsWith('data_age_hours')) return { exposure: () => null, fmt: (v) => `${v.toFixed(2)}h`, floor: 6 };
   if (key === 'aave.utilization_pct') return { exposure: () => null, fmt: (v) => `${v.toFixed(1)}%` };
   if (key.endsWith('_hhi')) return { exposure: () => null, fmt: (v) => v.toFixed(0) };
   if (key.startsWith('sui.') && (key.endsWith('.tvl') || key === 'sui.tvl_total'))
@@ -88,10 +97,20 @@ export async function runBaselines(): Promise<{ checked: number; anomalies: numb
       continue;
     }
 
+    const meta = metricMeta(m.metric_key);
+    if (meta.floor != null && Math.abs(latest) < meta.floor) {
+      // Below the floor the metric is healthy by definition; a z-score on a tiny
+      // baseline is a random number generator, not a signal.
+      results.push({ metricKey: m.metric_key, status: 'ok', z, latest, mean });
+      continue;
+    }
+
     if (evalResult.fired) {
-      const meta = metricMeta(m.metric_key);
       const stddev = evalResult.stddev;
-      const severity: Severity = Math.abs(z) >= 4 ? 'critical' : 'warning';
+      // An unexplained statistical deviation is always "look at this", never
+      // "act now": it says a number is unusual, not that money is at risk.
+      // Critical is reserved for rules that know what the move means.
+      const severity: Severity = 'warning';
       const dir = z > 0 ? 'above' : 'below';
       const exposureUsd = meta.exposure(latest);
       const ev: IncomingEvent = {

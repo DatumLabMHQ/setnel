@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  renotifyWindowMs, isSeverityEscalation, shouldRenotify, shouldEscalate,
+  renotifyWindowMs, isSeverityEscalation, shouldRenotify, shouldEscalate, RENOTIFY_MAX_MS,
   RENOTIFY_ACKED_MS, RENOTIFY_URGENT_MS, RENOTIFY_NORMAL_MS,
 } from '../src/lib/incident-logic.ts';
 
@@ -46,4 +46,31 @@ test('shouldEscalate: gating on severity, ack, mute, age, and prior escalation',
   assert.equal(shouldEscalate({ ...base, openedAt: new Date(now - 5 * 60 * 1000).toISOString() }, now, 15), false); // too fresh
   assert.equal(shouldEscalate({ ...base, escalatedAt: new Date(now - 60 * 1000).toISOString() }, now, 15), false); // escalated 1m ago
   assert.equal(shouldEscalate({ ...base, escalatedAt: new Date(now - 20 * 60 * 1000).toISOString() }, now, 15), true); // escalated 20m ago → due again
+});
+
+test('renotifyWindowMs: the window widens as an unresolved incident ages', () => {
+  const now = Date.UTC(2026, 8, 13, 12, 0, 0);
+  const ago = (h: number) => new Date(now - h * 3600_000).toISOString();
+  assert.equal(renotifyWindowMs(false, 'critical', ago(0.5), now), RENOTIFY_URGENT_MS);       // 1h
+  assert.equal(renotifyWindowMs(false, 'critical', ago(2), now), RENOTIFY_URGENT_MS * 4);     // 4h
+  assert.equal(renotifyWindowMs(false, 'critical', ago(10), now), RENOTIFY_URGENT_MS * 12);   // 12h
+  assert.equal(renotifyWindowMs(false, 'critical', ago(48), now), RENOTIFY_MAX_MS);           // daily floor
+  // Warning starts quieter and never goes past the daily floor either.
+  assert.equal(renotifyWindowMs(false, 'warning', ago(0.5), now), RENOTIFY_NORMAL_MS);
+  assert.equal(renotifyWindowMs(false, 'warning', ago(48), now), RENOTIFY_MAX_MS);
+  // An acknowledged incident stays silent whatever its age.
+  assert.equal(renotifyWindowMs(true, 'critical', ago(48), now), RENOTIFY_ACKED_MS);
+});
+
+test('shouldRenotify: an identical reading never re-pages', () => {
+  const now = Date.now();
+  const old = new Date(now - 10_000).toISOString();
+  // The LUSD case: same message every five minutes, window long past.
+  assert.equal(shouldRenotify({ muted: false, escalated: false, unchanged: true, notifiedAt: old, nowMs: now, windowMs: 1000 }), false);
+  // The same reading still pages if the severity climbs.
+  assert.equal(shouldRenotify({ muted: false, escalated: true, unchanged: true, notifiedAt: old, nowMs: now, windowMs: 1000 }), true);
+  // Never paged at all: page, unchanged or not.
+  assert.equal(shouldRenotify({ muted: false, escalated: false, unchanged: true, notifiedAt: null, nowMs: now, windowMs: 1000 }), true);
+  // A moved reading past the window still pages.
+  assert.equal(shouldRenotify({ muted: false, escalated: false, unchanged: false, notifiedAt: old, nowMs: now, windowMs: 1000 }), true);
 });
