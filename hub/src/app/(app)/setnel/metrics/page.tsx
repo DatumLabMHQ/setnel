@@ -4,6 +4,7 @@ import { getMetricsOverview, type MetricSeries } from '@/lib/queries';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
+import { MetricBandChart } from './metric-band-chart';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +52,7 @@ export default async function MetricsPage() {
                       <span className="truncate font-mono text-xs text-muted-foreground">{m.metricKey}</span>
                       <span className="font-mono text-sm tabular-nums">{fmtVal(m.metricKey, m.latest)}</span>
                     </div>
-                    <BandChart m={m} />
+                    <MetricBandChart m={m} />
                   </div>
                 ))}
               </div>
@@ -76,31 +77,3 @@ function fmtVal(key: string, v: number): string {
   return String(Math.round(v * 100) / 100);
 }
 
-// Line chart with the baseline band (mean ±2σ) shaded, "is the current value
-// inside its normal range?" at a glance.
-function BandChart({ m }: { m: MetricSeries }) {
-  const W = 300, H = 84, pad = 6;
-  const vals = m.points.map((p) => p.value);
-  const bandLo = m.mean - 2 * m.stddev;
-  const bandHi = m.mean + 2 * m.stddev;
-  const lo = Math.min(...vals, bandLo);
-  const hi = Math.max(...vals, bandHi);
-  const range = hi - lo || 1;
-  const n = m.points.length;
-  const x = (i: number) => pad + (i / (n - 1)) * (W - 2 * pad);
-  const y = (v: number) => pad + (1 - (v - lo) / range) * (H - 2 * pad);
-  const line = m.points.map((p, i) => `${x(i)},${y(p.value)}`).join(' ');
-  const bandTop = y(bandHi);
-  const bandBot = y(bandLo);
-  const last = m.points[n - 1].value;
-  const outOfBand = last > bandHi || last < bandLo;
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 block h-16 w-full" preserveAspectRatio="none">
-      {m.stddev > 0 ? <rect x={pad} y={bandTop} width={W - 2 * pad} height={Math.max(1, bandBot - bandTop)} fill="var(--fg-muted)" fillOpacity={0.12} /> : null}
-      <line x1={pad} x2={W - pad} y1={y(m.mean)} y2={y(m.mean)} stroke="var(--fg-muted)" strokeWidth={0.7} strokeDasharray="3 3" />
-      <polyline points={line} fill="none" stroke="var(--fg)" strokeWidth={1.6} strokeLinejoin="round" />
-      <circle cx={x(n - 1)} cy={y(last)} r={3} fill={outOfBand ? 'var(--critical)' : 'var(--fg)'} />
-    </svg>
-  );
-}
