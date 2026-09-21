@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import type { ChartBundle, Series } from '@/lib/queries';
+import { Button } from '@/components/ui/button';
 
-// Restrained, distinguishable palette for multi-line series.
+// Restrained, distinguishable palette for multi-line series, from the Datum chart tokens.
 const PALETTE = [
-  '#2563eb', '#dc2626', '#15803d', '#b45309', '#7c3aed',
-  '#0891b2', '#db2777', '#65a30d', '#ea580c', '#475569',
+  'var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)',
+  'var(--chart-5)', 'var(--chart-6)', 'var(--chart-7)', 'var(--chart-8)',
 ];
 
 type DimKey = 'collectionByDashboard' | 'alertsByDashboard' | 'alertsByCategory' | 'alertsByProtocol';
@@ -40,37 +41,43 @@ export function TrendChart({ bundle }: { bundle: ChartBundle }) {
 
   return (
     <div>
-      <div className="trend-controls">
-        <div className="seg">
-          {DIMS.map((d) => (
-            <button
-              key={d.key}
-              className={`seg-btn ${dim === d.key ? 'seg-on' : ''}`}
-              onClick={() => onDim(d.key)}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {DIMS.map((d) => (
+          <Button
+            key={d.key}
+            type="button"
+            size="sm"
+            variant={dim === d.key ? 'secondary' : 'ghost'}
+            onClick={() => onDim(d.key)}
+          >
+            {d.label}
+          </Button>
+        ))}
       </div>
 
       {series.length === 0 ? (
-        <div className="trend-empty">No data for this breakdown yet.</div>
+        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+          No data for this breakdown yet.
+        </div>
       ) : (
         <>
           <MultiLine days={days} series={visible} allSeries={series} />
-          <div className="trend-legend">
-            {series.map((s, i) => (
-              <button
-                key={s.key}
-                className={`leg ${hidden.has(s.key) ? 'leg-off' : ''}`}
-                onClick={() => toggle(s.key)}
-                title={hidden.has(s.key) ? 'Show' : 'Hide'}
-              >
-                <i className="leg-swatch" style={{ background: colorFor(series, s.key, i) }} />
-                {s.label}
-              </button>
-            ))}
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+            {series.map((s, i) => {
+              const off = hidden.has(s.key);
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  className={`inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-opacity hover:text-foreground ${off ? 'opacity-40' : ''}`}
+                  onClick={() => toggle(s.key)}
+                  title={off ? 'Show' : 'Hide'}
+                >
+                  <span className="size-2.5 rounded-[3px]" style={{ background: colorFor(series, s.key, i) }} />
+                  {s.label}
+                </button>
+              );
+            })}
           </div>
         </>
       )}
@@ -106,15 +113,15 @@ function MultiLine({ days, series, allSeries }: { days: string[]; series: Series
   const xLabels = [0, Math.floor((n - 1) / 2), n - 1];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label="Trend">
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Trend">
       {ticks.map((t) => (
         <g key={t}>
-          <line x1={padL} x2={padL + innerW} y1={y(t)} y2={y(t)} stroke="#ececf0" strokeWidth={1} />
-          <text x={padL - 8} y={y(t) + 3} textAnchor="end" fontSize={11} fill="#9aa3af">{abbrev(t)}</text>
+          <line x1={padL} x2={padL + innerW} y1={y(t)} y2={y(t)} stroke="var(--line)" strokeWidth={1} />
+          <text x={padL - 8} y={y(t) + 3} textAnchor="end" fontSize={11} fill="var(--fg-muted)">{abbrev(t)}</text>
         </g>
       ))}
       {xLabels.map((i) => (
-        <text key={i} x={x(i)} y={H - 9} textAnchor="middle" fontSize={11} fill="#9aa3af">{fmtDay(days[i])}</text>
+        <text key={i} x={x(i)} y={H - 9} textAnchor="middle" fontSize={11} fill="var(--fg-muted)">{fmtDay(days[i])}</text>
       ))}
       {series.map((s) => {
         const color = colorFor(allSeries, s.key, 0);

@@ -1,6 +1,9 @@
 import { redirect } from 'next/navigation';
 import { isAuthed } from '@/lib/session';
 import { getMetricsOverview, type MetricSeries } from '@/lib/queries';
+import { PageHeader } from '@/components/page-header';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,25 +21,42 @@ export default async function MetricsPage() {
 
   return (
     <>
+      <PageHeader
+        eyebrow="Metrics"
+        question="Is anything drifting out of range?"
+        answer="Every tracked metric, grouped by dashboard, with its latest value against the normal band (mean plus or minus two sigma). A dot outside the band is worth a look."
+      />
 
       {byDash.size === 0 ? (
-        <section className="panel"><div className="empty">No metric samples yet — they accumulate as detectors run.</div></section>
+        <Card>
+          <CardContent>
+            <Empty>
+              <EmptyTitle>No samples yet</EmptyTitle>
+              <EmptyDescription>Metric samples accumulate as detectors run.</EmptyDescription>
+            </Empty>
+          </CardContent>
+        </Card>
       ) : (
         [...byDash.entries()].map(([name, list]) => (
-          <section className="panel" key={name}>
-            <div className="panel-head"><h2>{name}</h2><span className="panel-note">{list.length} metrics · grey band = normal range (mean ±2σ)</span></div>
-            <div className="metric-grid">
-              {list.map((m) => (
-                <div className="metric-card" key={m.metricKey}>
-                  <div className="metric-head">
-                    <span className="metric-key">{m.metricKey}</span>
-                    <span className="metric-val">{fmtVal(m.metricKey, m.latest)}</span>
+          <Card key={name}>
+            <CardHeader>
+              <CardTitle>{name}</CardTitle>
+              <CardDescription>{list.length} metrics, the grey band is the normal range (mean plus or minus two sigma).</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {list.map((m) => (
+                  <div className="rounded-lg border border-border p-3" key={m.metricKey}>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="truncate font-mono text-xs text-muted-foreground">{m.metricKey}</span>
+                      <span className="font-mono text-sm tabular-nums">{fmtVal(m.metricKey, m.latest)}</span>
+                    </div>
+                    <BandChart m={m} />
                   </div>
-                  <BandChart m={m} />
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         ))
       )}
     </>
@@ -56,7 +76,7 @@ function fmtVal(key: string, v: number): string {
   return String(Math.round(v * 100) / 100);
 }
 
-// Line chart with the baseline band (mean ±2σ) shaded — "is the current value
+// Line chart with the baseline band (mean ±2σ) shaded, "is the current value
 // inside its normal range?" at a glance.
 function BandChart({ m }: { m: MetricSeries }) {
   const W = 300, H = 84, pad = 6;
@@ -76,11 +96,11 @@ function BandChart({ m }: { m: MetricSeries }) {
   const outOfBand = last > bandHi || last < bandLo;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="metric-svg" preserveAspectRatio="none">
-      {m.stddev > 0 ? <rect x={pad} y={bandTop} width={W - 2 * pad} height={Math.max(1, bandBot - bandTop)} fill="#0a0a0a" fillOpacity={0.06} /> : null}
-      <line x1={pad} x2={W - pad} y1={y(m.mean)} y2={y(m.mean)} stroke="#9aa3af" strokeWidth={0.7} strokeDasharray="3 3" />
-      <polyline points={line} fill="none" stroke="#0a0a0a" strokeWidth={1.6} strokeLinejoin="round" />
-      <circle cx={x(n - 1)} cy={y(last)} r={3} fill={outOfBand ? '#dc2626' : '#0a0a0a'} />
+    <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 block h-16 w-full" preserveAspectRatio="none">
+      {m.stddev > 0 ? <rect x={pad} y={bandTop} width={W - 2 * pad} height={Math.max(1, bandBot - bandTop)} fill="var(--fg-muted)" fillOpacity={0.12} /> : null}
+      <line x1={pad} x2={W - pad} y1={y(m.mean)} y2={y(m.mean)} stroke="var(--fg-muted)" strokeWidth={0.7} strokeDasharray="3 3" />
+      <polyline points={line} fill="none" stroke="var(--fg)" strokeWidth={1.6} strokeLinejoin="round" />
+      <circle cx={x(n - 1)} cy={y(last)} r={3} fill={outOfBand ? 'var(--critical)' : 'var(--fg)'} />
     </svg>
   );
 }

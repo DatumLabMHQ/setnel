@@ -1,10 +1,30 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { isAuthed } from '@/lib/session';
 import { getDashboardsOverview } from '@/lib/admin';
 import { HEALTH_EXPECTED_PER_DAY } from '@/lib/queries';
-import { timeAgo } from '@/lib/format';
+import { count, pct, timeAgo } from '@/lib/format';
+import { PageHeader } from '@/components/page-header';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
+
+// Collection-intensity ramp for the 14-day strip: none, low, partial, full.
+const CELL = [
+  'var(--muted)',
+  'color-mix(in oklab, var(--good) 30%, transparent)',
+  'color-mix(in oklab, var(--good) 60%, transparent)',
+  'var(--good)',
+];
+const cellLevel = (checks: number) => (checks <= 0 ? 0 : checks < 60 ? 1 : checks < 200 ? 2 : 3);
+
+const STATUS: Record<'healthy' | 'stale' | 'down', string> = {
+  healthy: 'bg-(--good)',
+  stale: 'bg-(--warning)',
+  down: 'bg-(--critical)',
+};
 
 function uptimePct(cells: { checks: number }[]): number {
   if (!cells.length) return 0;
@@ -23,69 +43,102 @@ export default async function DashboardsPage() {
     }),
     { metrics: 0, detectors: 0, active: 0, today: 0 },
   );
+  const healthy = rows.filter((r) => r.status === 'healthy').length;
+
+  const kpis = [
+    { label: 'Dashboards', value: String(rows.length), sub: `${healthy} healthy` },
+    { label: 'Metrics tracked', value: String(totals.metrics), sub: 'across all surfaces' },
+    { label: 'Detectors', value: String(totals.detectors), sub: 'watching' },
+    { label: 'Active incidents', value: String(totals.active), sub: 'open now', tone: totals.active ? 'text-(--warning)' : 'text-(--good)' },
+    { label: 'Check-ins today', value: count(totals.today), sub: `~${HEALTH_EXPECTED_PER_DAY}/day target each` },
+  ];
 
   return (
     <>
-      <section className="kpis">
-        <div className="kpi"><div className="kpi-label">Dashboards</div><div className="kpi-value">{rows.length}</div><div className="kpi-sub">{rows.filter((r) => r.status === 'healthy').length} healthy</div></div>
-        <div className="kpi"><div className="kpi-label">Metrics tracked</div><div className="kpi-value">{totals.metrics}</div><div className="kpi-sub">across all surfaces</div></div>
-        <div className="kpi"><div className="kpi-label">Detectors</div><div className="kpi-value">{totals.detectors}</div><div className="kpi-sub">watching</div></div>
-        <div className={`kpi ${totals.active ? 'kpi-warn' : 'kpi-good'}`}><div className="kpi-label">Active incidents</div><div className="kpi-value">{totals.active}</div><div className="kpi-sub">open now</div></div>
-        <div className="kpi"><div className="kpi-label">Check-ins today</div><div className="kpi-value">{totals.today}</div><div className="kpi-sub">~{HEALTH_EXPECTED_PER_DAY}/day target each</div></div>
+      <PageHeader
+        eyebrow="Dashboards"
+        question="Which surfaces are collecting and clear?"
+        answer="Every monitored dashboard, its 14-day collection record, uptime, and open incidents. Click a row to drill into one surface."
+      />
+
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        {kpis.map((k) => (
+          <Card key={k.label}>
+            <CardHeader className="gap-1 pb-0">
+              <CardDescription>{k.label}</CardDescription>
+              <CardTitle className={`font-mono text-2xl tabular-nums ${k.tone ?? ''}`}>{k.value}</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-1 text-xs text-muted-foreground">{k.sub}</CardContent>
+          </Card>
+        ))}
       </section>
 
-      <section className="panel">
-        <div className="panel-head"><h2>Monitored dashboards</h2><span className="panel-note">{rows.length} surfaces · click to drill down</span></div>
-        <div className="cov-wrap">
-          <table className="cov-table dash-table">
-            <thead>
-              <tr>
-                <th align="left">Dashboard</th>
-                <th align="left">14-day collection</th>
-                <th>Uptime</th>
-                <th>Last check</th>
-                <th>Today</th>
-                <th>Metrics</th>
-                <th>Detectors</th>
-                <th>Active</th>
-                <th>30d</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((h) => {
-                const up = uptimePct(h.cells);
-                return (
-                  <tr key={h.id} className="dash-tr">
-                    <td align="left">
-                      <a className="dash-name-link" href={`/setnel/dashboards/${h.id}`}>
-                        <span className={`status-dot status-${h.status}`} />{h.name}
-                      </a>
-                    </td>
-                    <td align="left">
-                      <span className="m-cells m-cells-inline">
-                        {h.cells.map((c) => <span key={c.day} className={`cell lvl-${c.checks <= 0 ? 0 : c.checks < 60 ? 1 : c.checks < 200 ? 2 : 3}`} title={`${c.day}: ${c.checks}`} />)}
-                      </span>
-                    </td>
-                    <td className={up >= 90 ? 'cov-yes' : up >= 50 ? '' : 'cov-blocked'}>{up}%</td>
-                    <td>{timeAgo(h.lastCheckAt)}</td>
-                    <td>{h.checksToday}</td>
-                    <td>{h.metricCount}</td>
-                    <td>{h.detectorCount}</td>
-                    <td>{h.activeIncidents > 0 ? <span className={`badge ${h.criticalActive ? 'sev-critical' : 'badge-count'}`}>{h.activeIncidents}</span> : <span className="kpi-sub">0</span>}</td>
-                    <td>{h.incidents30d}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="legend" style={{ marginTop: 12 }}>
-          <span className="legend-item"><i className="cell lvl-3" /> full</span>
-          <span className="legend-item"><i className="cell lvl-2" /> partial</span>
-          <span className="legend-item"><i className="cell lvl-1" /> low</span>
-          <span className="legend-item"><i className="cell lvl-0" /> none</span>
-        </div>
-      </section>
+      <Card>
+          <CardHeader>
+            <CardTitle>Monitored dashboards</CardTitle>
+            <CardDescription>{rows.length} surfaces, newest check first. Green marks a day with data, grey a gap.</CardDescription>
+          </CardHeader>
+          <CardContent className="px-0">
+            <div className="overflow-x-auto border-t">
+              <Table>
+                <TableHeader className="bg-muted">
+                  <TableRow>
+                    <TableHead>Dashboard</TableHead>
+                    <TableHead>14-day collection</TableHead>
+                    <TableHead className="text-right">Uptime</TableHead>
+                    <TableHead className="text-right">Last check</TableHead>
+                    <TableHead className="text-right">Today</TableHead>
+                    <TableHead className="text-right">Metrics</TableHead>
+                    <TableHead className="text-right">Detectors</TableHead>
+                    <TableHead className="text-right">Active</TableHead>
+                    <TableHead className="text-right">30d</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((h) => {
+                    const up = uptimePct(h.cells);
+                    return (
+                      <TableRow key={h.id}>
+                        <TableCell>
+                          <Link href={`/setnel/dashboards/${h.id}`} className="inline-flex items-center gap-2 font-medium hover:underline">
+                            <span className={`size-2 shrink-0 rounded-full ${STATUS[h.status]}`} />
+                            {h.name}
+                          </Link>
+                        </TableCell>
+                        <TableCell>
+                          <span className="flex items-center gap-0.5">
+                            {h.cells.map((c) => (
+                              <span key={c.day} title={`${c.day}: ${c.checks}`} className="h-4 w-1.5 rounded-[2px]" style={{ backgroundColor: CELL[cellLevel(c.checks)] }} />
+                            ))}
+                          </span>
+                        </TableCell>
+                        <TableCell className={`text-right font-mono tabular-nums ${up >= 90 ? 'text-(--good)' : up < 50 ? 'text-(--critical)' : ''}`}>{pct(up, 0)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{timeAgo(h.lastCheckAt)}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{count(h.checksToday)}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{count(h.metricCount)}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{count(h.detectorCount)}</TableCell>
+                        <TableCell className="text-right">
+                          {h.activeIncidents > 0 ? (
+                            <Badge className={h.criticalActive ? 'bg-(--critical-soft) text-(--critical) border-transparent' : 'bg-(--warning-soft) text-(--warning) border-transparent'}>{h.activeIncidents}</Badge>
+                          ) : (
+                            <span className="font-mono tabular-nums text-muted-foreground">0</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono tabular-nums text-muted-foreground">{count(h.incidents30d)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 px-4 pt-4 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-1.5 rounded-[2px]" style={{ backgroundColor: CELL[3] }} /> full</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-1.5 rounded-[2px]" style={{ backgroundColor: CELL[2] }} /> partial</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-1.5 rounded-[2px]" style={{ backgroundColor: CELL[1] }} /> low</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-1.5 rounded-[2px]" style={{ backgroundColor: CELL[0] }} /> none</span>
+            </div>
+          </CardContent>
+        </Card>
     </>
   );
 }

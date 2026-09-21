@@ -2,8 +2,16 @@ import { redirect } from 'next/navigation';
 import { isAuthed } from '@/lib/session';
 import { getSla, getDetectorStats } from '@/lib/queries';
 import { getWeeklyReport, getSloTargets, type WeekRow } from '@/lib/admin';
+import { PageHeader } from '@/components/page-header';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
+import { DownloadSimpleIcon } from '@phosphor-icons/react/ssr';
 
 export const dynamic = 'force-dynamic';
+
+const toneClass: Record<'good' | 'bad', string> = { good: 'text-(--good)', bad: 'text-(--critical)' };
 
 export default async function ReportsPage() {
   if (!(await isAuthed())) redirect('/login');
@@ -15,74 +23,134 @@ export default async function ReportsPage() {
   const ttrTone = sla.avgTimeToResolveMin == null ? '' : sla.avgTimeToResolveMin <= slo.mttrTargetMin ? 'good' : 'bad';
   const fpTone = sla.falsePositivePct <= slo.fpRateTarget ? 'good' : 'bad';
 
+  const kpis = [
+    { label: 'Ack rate', value: `${sla.ackRatePct}%`, sub: `target at least ${slo.ackRateTarget}%`, tone: ackTone as 'good' | 'bad' },
+    { label: 'Time to ack', value: sla.avgTimeToAckMin == null ? 'n/a' : `${sla.avgTimeToAckMin}m`, sub: `target at most ${slo.mttaTargetMin}m`, tone: ttaTone },
+    { label: 'Time to resolve', value: sla.avgTimeToResolveMin == null ? 'n/a' : `${sla.avgTimeToResolveMin}m`, sub: `target at most ${slo.mttrTargetMin}m`, tone: ttrTone },
+    { label: 'False positives', value: `${sla.falsePositivePct}%`, sub: `ceiling ${slo.fpRateTarget}% · ${sla.total} incidents`, tone: fpTone as 'good' | 'bad' },
+  ];
+
   return (
     <>
-      <section className="kpis">
-        <div className={`kpi kpi-${ackTone}`}><div className="kpi-label">Ack rate</div><div className="kpi-value">{sla.ackRatePct}%</div><div className="kpi-sub">target ≥ {slo.ackRateTarget}%</div></div>
-        <div className={`kpi ${ttaTone ? `kpi-${ttaTone}` : ''}`}><div className="kpi-label">Time to ack</div><div className="kpi-value">{sla.avgTimeToAckMin == null ? '—' : `${sla.avgTimeToAckMin}m`}</div><div className="kpi-sub">target ≤ {slo.mttaTargetMin}m</div></div>
-        <div className={`kpi ${ttrTone ? `kpi-${ttrTone}` : ''}`}><div className="kpi-label">Time to resolve</div><div className="kpi-value">{sla.avgTimeToResolveMin == null ? '—' : `${sla.avgTimeToResolveMin}m`}</div><div className="kpi-sub">target ≤ {slo.mttrTargetMin}m</div></div>
-        <div className={`kpi kpi-${fpTone}`}><div className="kpi-label">False positives</div><div className="kpi-value">{sla.falsePositivePct}%</div><div className="kpi-sub">ceiling {slo.fpRateTarget}% · {sla.total} incidents</div></div>
+      <PageHeader
+        eyebrow="Reports"
+        question="How is the team doing over time?"
+        answer="Response quality against the SLO targets, the last twelve weeks of trends, and which detectors are pulling their weight. Green means on target, red means off it."
+      />
+
+      {/* Response against targets, last 30 days. */}
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {kpis.map((k) => (
+          <Card key={k.label}>
+            <CardHeader className="gap-1 pb-0">
+              <CardDescription>{k.label}</CardDescription>
+              <CardTitle className={`font-mono text-2xl tabular-nums ${k.tone ? toneClass[k.tone as 'good' | 'bad'] : ''}`}>{k.value}</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-1 text-xs text-muted-foreground">{k.sub}</CardContent>
+          </Card>
+        ))}
       </section>
 
-      <section className="panel">
-        <div className="panel-head"><h2>Weekly trends</h2><a className="card-detail" href="/api/v1/report" download>Export CSV ↓</a></div>
-        {weeks.length === 0 ? (
-          <div className="empty">Not enough history yet — trends need at least a week of incidents.</div>
-        ) : (
-          <>
-            <div className="metric-grid">
-              <TrendPanel title="Incidents per week" rows={weeks} pick={(w) => w.incidents} fmt={(v) => String(v)} />
-              <TrendPanel title="MTTA (min)" rows={weeks} pick={(w) => w.mttaMin} fmt={(v) => (v == null ? '—' : `${v}m`)} />
-              <TrendPanel title="MTTR (min)" rows={weeks} pick={(w) => w.mttrMin} fmt={(v) => (v == null ? '—' : `${v}m`)} />
-              <TrendPanel title="False-positive %" rows={weeks} pick={(w) => (w.incidents ? Math.round((w.falsePositives / w.incidents) * 100) : 0)} fmt={(v) => `${v}%`} />
-            </div>
-            <div className="cov-wrap" style={{ marginTop: 16 }}>
-              <table className="cov-table">
-                <thead><tr><th align="left">Week of</th><th>Incidents</th><th>False pos.</th><th>Acked %</th><th>MTTA</th><th>MTTR</th></tr></thead>
-                <tbody>
-                  {[...weeks].reverse().map((w) => (
-                    <tr key={w.week}>
-                      <td align="left" className="cov-risk">{w.week}</td>
-                      <td>{w.incidents}</td>
-                      <td>{w.falsePositives}</td>
-                      <td>{w.ackedPct}%</td>
-                      <td>{w.mttaMin == null ? '—' : `${w.mttaMin}m`}</td>
-                      <td>{w.mttrMin == null ? '—' : `${w.mttrMin}m`}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </section>
+      {/* Weekly trends. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Weekly trends</CardTitle>
+          <CardDescription>Incidents, response times and false positives by week, oldest to newest.</CardDescription>
+          <CardAction>
+            <Button variant="outline" size="sm" render={<a href="/api/v1/report" download />}>
+              <DownloadSimpleIcon />
+              Export CSV
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {weeks.length === 0 ? (
+            <Empty>
+              <EmptyTitle>Not enough history yet</EmptyTitle>
+              <EmptyDescription>Trends need at least a week of incidents before there is anything to plot.</EmptyDescription>
+            </Empty>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <TrendPanel title="Incidents per week" rows={weeks} pick={(w) => w.incidents} fmt={(v) => String(v)} />
+                <TrendPanel title="Time to ack (min)" rows={weeks} pick={(w) => w.mttaMin} fmt={(v) => (v == null ? 'n/a' : `${v}m`)} />
+                <TrendPanel title="Time to resolve (min)" rows={weeks} pick={(w) => w.mttrMin} fmt={(v) => (v == null ? 'n/a' : `${v}m`)} />
+                <TrendPanel title="False positive %" rows={weeks} pick={(w) => (w.incidents ? Math.round((w.falsePositives / w.incidents) * 100) : 0)} fmt={(v) => `${v}%`} />
+              </div>
+              <div className="mt-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Week of</TableHead>
+                      <TableHead className="text-right">Incidents</TableHead>
+                      <TableHead className="text-right">False pos.</TableHead>
+                      <TableHead className="text-right">Acked %</TableHead>
+                      <TableHead className="text-right">Time to ack</TableHead>
+                      <TableHead className="text-right">Time to resolve</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...weeks].reverse().map((w) => (
+                      <TableRow key={w.week}>
+                        <TableCell className="font-medium">{w.week}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{w.incidents}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{w.falsePositives}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{w.ackedPct}%</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{w.mttaMin == null ? 'n/a' : `${w.mttaMin}m`}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{w.mttrMin == null ? 'n/a' : `${w.mttrMin}m`}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
-      <section className="panel">
-        <div className="panel-head"><h2>Detector quality</h2><span className="panel-note">most active detectors · last 30 days · high FP% = needs tuning</span></div>
-        {detectors.length === 0 ? (
-          <div className="empty">No incidents in the window.</div>
-        ) : (
-          <div className="cov-wrap">
-            <table className="cov-table">
-              <thead><tr><th align="left">Detector</th><th align="left">Dashboard</th><th>Incidents</th><th>False positives</th><th>Avg ack</th></tr></thead>
-              <tbody>
+      {/* Detector quality, last 30 days. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Detector quality</CardTitle>
+          <CardDescription>Most active detectors over the last 30 days. A high false positive share means the detector needs tuning.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {detectors.length === 0 ? (
+            <Empty>
+              <EmptyTitle>No incidents in the window</EmptyTitle>
+              <EmptyDescription>Nothing has fired in the last 30 days, so there is no detector activity to rank.</EmptyDescription>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Detector</TableHead>
+                  <TableHead>Dashboard</TableHead>
+                  <TableHead className="text-right">Incidents</TableHead>
+                  <TableHead className="text-right">False positives</TableHead>
+                  <TableHead className="text-right">Avg ack</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {detectors.map((d) => {
                   const fpPct = d.total ? Math.round((d.falsePositives / d.total) * 100) : 0;
                   return (
-                    <tr key={`${d.dashboardId}.${d.detectorId}`}>
-                      <td align="left" className="cov-risk">{d.detectorId}</td>
-                      <td align="left">{d.dashboardId}</td>
-                      <td>{d.total}</td>
-                      <td className={fpPct > 30 ? 'cov-blocked' : ''}>{d.falsePositives}{d.falsePositives ? ` (${fpPct}%)` : ''}</td>
-                      <td>{d.avgAckMin == null ? '—' : `${d.avgAckMin}m`}</td>
-                    </tr>
+                    <TableRow key={`${d.dashboardId}.${d.detectorId}`}>
+                      <TableCell className="font-mono text-xs">{d.detectorId}</TableCell>
+                      <TableCell className="text-muted-foreground">{d.dashboardId}</TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">{d.total}</TableCell>
+                      <TableCell className={`text-right font-mono tabular-nums ${fpPct > 30 ? 'text-(--critical)' : ''}`}>
+                        {d.falsePositives}{d.falsePositives ? ` (${fpPct}%)` : ''}
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">{d.avgAckMin == null ? 'n/a' : `${d.avgAckMin}m`}</TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }
@@ -96,14 +164,28 @@ function TrendPanel({ title, rows, pick, fmt }: { title: string; rows: WeekRow[]
   const W = 300, H = 84, pad = 6, n = rows.length;
   const bw = (W - 2 * pad) / n;
   return (
-    <div className="metric-card">
-      <div className="metric-head"><span className="metric-key">{title}</span><span className="metric-val">{fmt(latest)}</span></div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="metric-svg" preserveAspectRatio="none">
+    <div className="rounded-lg border border-border p-3">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <span className="text-xs text-muted-foreground">{title}</span>
+        <span className="font-mono text-sm tabular-nums">{fmt(latest)}</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
         {rows.map((_, i) => {
           const v = vals[i];
           if (v == null) return null;
           const h = max > 0 ? (v / max) * (H - 2 * pad) : 0;
-          return <rect key={i} x={pad + i * bw + 1} y={H - pad - h} width={Math.max(1, bw - 2)} height={Math.max(0, h)} fill={i === n - 1 ? '#0a0a0a' : '#c7ccd4'} />;
+          const isLatest = i === n - 1;
+          return (
+            <rect
+              key={i}
+              x={pad + i * bw + 1}
+              y={H - pad - h}
+              width={Math.max(1, bw - 2)}
+              height={Math.max(0, h)}
+              fill={isLatest ? 'var(--foreground)' : 'var(--muted-foreground)'}
+              fillOpacity={isLatest ? 1 : 0.35}
+            />
+          );
         })}
       </svg>
     </div>

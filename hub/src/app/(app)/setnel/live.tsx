@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 // Auto-refreshes the server-rendered console on an interval via router.refresh()
 // (re-runs the server components, no full page reload). Toggleable.
@@ -24,13 +25,15 @@ export function LiveRefresh({ intervalMs = 30000 }: { intervalMs?: number }) {
   }, [on, intervalMs, router]);
 
   return (
-    <button
-      className={`live-btn ${on ? 'live-on' : ''}`}
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1.5 font-mono tabular-nums"
       onClick={() => { setOn((v) => !v); setAgo(0); }}
-      title={on ? 'Auto-refresh on — click to pause' : 'Paused — click to resume'}
+      title={on ? 'Auto refresh on, click to pause' : 'Paused, click to resume'}
     >
-      <span className="live-dot" />
+      <span className={`size-2 rounded-full ${on ? 'animate-pulse bg-(--good)' : 'bg-muted-foreground'}`} />
       {on ? `live · ${ago}s` : 'paused'}
-    </button>
+    </Button>
   );
 }

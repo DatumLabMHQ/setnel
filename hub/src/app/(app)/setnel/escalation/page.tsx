@@ -1,12 +1,33 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { isAuthed } from '@/lib/session';
 import { getEscalation, getRecentEscalations, getChannels, getRotation, getCurrentOnCall } from '@/lib/admin';
 import { fmtTime } from '@/lib/format';
 import { saveEscalation, saveChannel, saveRotation } from '../config-actions';
+import { PageHeader } from '@/components/page-header';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { CheckCircleIcon, WarningCircleIcon, UserCircleIcon, BellRingingIcon } from '@phosphor-icons/react/ssr';
 
 export const dynamic = 'force-dynamic';
 
-const SEV: Record<string, string> = { info: 'sev-info', warning: 'sev-warning', critical: 'sev-critical', emergency: 'sev-emergency' };
+const sevClass: Record<string, string> = {
+  info: 'bg-(--info-soft) text-(--info) border-transparent',
+  warning: 'bg-(--warning-soft) text-(--warning) border-transparent',
+  critical: 'bg-(--critical-soft) text-(--critical) border-transparent',
+  emergency: 'bg-(--emergency-soft) text-(--emergency) border-transparent',
+};
+
+function SevBadge({ severity }: { severity: string }) {
+  return <Badge className={sevClass[severity] ?? 'bg-muted text-muted-foreground border-transparent'}>{severity}</Badge>;
+}
 
 export default async function EscalationPage() {
   if (!(await isAuthed())) redirect('/login');
@@ -19,113 +40,191 @@ export default async function EscalationPage() {
 
   return (
     <>
-      <section className="panel">
-        <div className="panel-head"><h2>On-call now</h2><span className="panel-note">{onCall.rotating ? 'from the weekly rotation' : 'static on-call (no rotation set)'}</span></div>
-        <div className="kpis" style={{ marginTop: 4 }}>
-          <div className={`kpi ${onCall.name ? 'kpi-good' : 'kpi-warn'}`}>
-            <div className="kpi-label">Current on-call</div>
-            <div className="kpi-value" style={{ fontSize: 20 }}>{onCall.name ?? 'nobody set'}</div>
-            <div className="kpi-sub">{onCall.contact ?? (onCall.name ? 'no contact' : 'set a rotation or static on-call below')}</div>
+      <PageHeader
+        eyebrow="Escalation"
+        question="Who gets paged when nobody acks?"
+        answer="The current on-call, the weekly rotation, the escalation window, and where each severity is delivered. Acknowledging or muting an incident stops its escalation."
+      />
+
+      {/* On-call now, at a glance. */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card className={onCall.name ? '' : 'ring-(--warning)/40'}>
+          <CardHeader className="gap-1 pb-0">
+            <CardDescription className="flex items-center gap-1.5">
+              <UserCircleIcon className="size-4" /> Current on-call
+            </CardDescription>
+            <CardTitle className={`text-xl ${onCall.name ? 'text-(--good)' : 'text-(--warning)'}`}>{onCall.name ?? 'nobody set'}</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-1 text-xs text-muted-foreground">
+            {onCall.contact ?? (onCall.name ? 'no contact' : 'set a rotation or static on-call below')}
+            <span className="mt-1 block">{onCall.rotating ? 'from the weekly rotation' : 'static on-call, no rotation set'}</span>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="gap-1 pb-0">
+            <CardDescription>Rotation</CardDescription>
+            <CardTitle className="font-mono text-2xl tabular-nums">{rotation.length || 'n/a'}</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-1 text-xs text-muted-foreground">people, weekly handoff</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="gap-1 pb-0">
+            <CardDescription>Delivery</CardDescription>
+            <CardTitle className="text-lg">Telegram{emailOk ? ' and email' : ''}</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-1 text-xs text-muted-foreground">no phone or SMS paging yet</CardContent>
+        </Card>
+      </section>
+
+      {/* On-call rotation. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>On-call rotation</CardTitle>
+          <CardDescription>One person per line as <code className="font-mono">Name &lt;contact&gt;</code>. The list rotates weekly.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={saveRotation} className="flex flex-col gap-4">
+            <Field>
+              <FieldLabel htmlFor="roster">Roster</FieldLabel>
+              <Textarea
+                id="roster"
+                name="roster"
+                rows={Math.max(4, rotation.length + 1)}
+                defaultValue={rosterText}
+                placeholder={'Olusegun <@olusegun>\nAda <ada@datumlab.xyz>'}
+                className="font-mono text-sm"
+              />
+              <FieldDescription>
+                An empty rotation falls back to the static on-call below. This rotates who is named on the page. Delivery is still Telegram or email to the team channel, not a personal phone call.
+              </FieldDescription>
+            </Field>
+            <div>
+              <Button type="submit">Save rotation</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Escalation policy. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Escalation policy</CardTitle>
+          <CardDescription>
+            When a critical or emergency incident stays unacknowledged past the window, Setnel re-pages tagged escalation with the current on-call.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form action={saveEscalation} className="flex flex-col gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Field>
+                <FieldLabel htmlFor="minutes">Escalate after (minutes)</FieldLabel>
+                <Input id="minutes" name="minutes" type="number" min="1" max="1440" defaultValue={esc.escalateAfterMin} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="oncallName">On-call name</FieldLabel>
+                <Input id="oncallName" name="oncallName" maxLength={80} defaultValue={esc.oncallName ?? ''} placeholder="e.g. Olusegun" />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="oncallContact">On-call contact</FieldLabel>
+                <Input id="oncallContact" name="oncallContact" maxLength={120} defaultValue={esc.oncallContact ?? ''} placeholder="@handle or phone" />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="enabled">Escalation</FieldLabel>
+                <NativeSelect id="enabled" name="enabled" defaultValue={String(esc.enabled)} className="w-full">
+                  <NativeSelectOption value="true">enabled</NativeSelectOption>
+                  <NativeSelectOption value="false">paused</NativeSelectOption>
+                </NativeSelect>
+              </Field>
+              <Field className="sm:col-span-2 lg:col-span-4">
+                <FieldLabel htmlFor="emailRecipients">Email recipients</FieldLabel>
+                <Input id="emailRecipients" name="emailRecipients" maxLength={500} defaultValue={esc.emailRecipients ?? ''} placeholder="oncall@datumlab.xyz, lead@datumlab.xyz" />
+                <FieldDescription>Comma or space separated.</FieldDescription>
+              </Field>
+            </div>
+            <div>
+              <Button type="submit">Save escalation policy</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Notification channels. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Notification channels</CardTitle>
+          <CardDescription>Where each severity is delivered. Info never pages, and Telegram stays the reliable default.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-4 text-sm">
+            <span className={`inline-flex items-center gap-1.5 ${telegramOk ? 'text-(--good)' : 'text-(--critical)'}`}>
+              {telegramOk ? <CheckCircleIcon className="size-4" /> : <WarningCircleIcon className="size-4" />}
+              Telegram {telegramOk ? 'connected' : 'not configured'}
+            </span>
+            <span className={`inline-flex items-center gap-1.5 ${emailOk ? 'text-(--good)' : 'text-(--critical)'}`}>
+              {emailOk ? <CheckCircleIcon className="size-4" /> : <WarningCircleIcon className="size-4" />}
+              Email {emailOk ? (process.env.ONCHAINSUITE_SECRET_KEY ? 'via Onchain Suite' : 'via Resend') : 'needs ONCHAINSUITE_SECRET_KEY'}
+            </span>
           </div>
-          <div className="kpi"><div className="kpi-label">Rotation</div><div className="kpi-value">{rotation.length || '—'}</div><div className="kpi-sub">people · weekly handoff</div></div>
-          <div className="kpi"><div className="kpi-label">Delivery</div><div className="kpi-value" style={{ fontSize: 16 }}>Telegram{emailOk ? ' + email' : ''}</div><div className="kpi-sub">no phone/SMS paging (yet)</div></div>
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="panel-head"><h2>On-call rotation</h2><span className="panel-note">one per line: <code>Name &lt;contact&gt;</code> · rotates weekly</span></div>
-        <form action={saveRotation}>
-          <textarea className="login-input" name="roster" rows={Math.max(4, rotation.length + 1)} defaultValue={rosterText} placeholder={'Olusegun <@olusegun>\nAda <ada@datumlab.xyz>'} style={{ width: '100%', fontFamily: 'var(--mono)', fontSize: 13 }} />
-          <div className="actions"><button className="act act-primary" type="submit">Save rotation</button></div>
-        </form>
-        <p className="panel-note" style={{ marginTop: 8 }}>
-          Empty rotation → escalations fall back to the static on-call below. This rotates who is <i>named</i> in the page; delivery is still Telegram/email to the team channel, not a personal phone call.
-        </p>
-      </section>
-
-      <section className="panel">
-        <div className="panel-head"><h2>Escalation policy</h2><span className="panel-note">who gets paged when nobody acks</span></div>
-        <p className="panel-note" style={{ marginBottom: 14 }}>
-          When a <b>critical</b> or <b>emergency</b> incident stays unacknowledged past the window below, Setnel re-pages
-          tagged <code>⏫ ESCALATION</code> with the current on-call. Acknowledging or muting an incident stops its escalation.
-        </p>
-        <form action={saveEscalation}>
-          <div className="kpis" style={{ marginTop: 0 }}>
-            <label className="kpi" style={{ display: 'block' }}>
-              <div className="kpi-label">Escalate after (minutes)</div>
-              <input className="actor-input" style={{ width: '100%', marginTop: 8 }} name="minutes" type="number" min="1" max="1440" defaultValue={esc.escalateAfterMin} />
-            </label>
-            <label className="kpi" style={{ display: 'block' }}>
-              <div className="kpi-label">On-call name</div>
-              <input className="actor-input" style={{ width: '100%', marginTop: 8 }} name="oncallName" maxLength={80} defaultValue={esc.oncallName ?? ''} placeholder="e.g. Olusegun" />
-            </label>
-            <label className="kpi" style={{ display: 'block' }}>
-              <div className="kpi-label">On-call contact</div>
-              <input className="actor-input" style={{ width: '100%', marginTop: 8 }} name="oncallContact" maxLength={120} defaultValue={esc.oncallContact ?? ''} placeholder="@handle / phone" />
-            </label>
-            <label className="kpi" style={{ display: 'block' }}>
-              <div className="kpi-label">Escalation</div>
-              <select className="actor-input" style={{ width: '100%', marginTop: 8 }} name="enabled" defaultValue={String(esc.enabled)}>
-                <option value="true">enabled</option>
-                <option value="false">paused</option>
-              </select>
-            </label>
-            <label className="kpi" style={{ display: 'block', gridColumn: '1 / -1' }}>
-              <div className="kpi-label">Email recipients <span className="kpi-sub" style={{ textTransform: 'none', letterSpacing: 0 }}>· comma or space separated</span></div>
-              <input className="actor-input" style={{ width: '100%', marginTop: 8 }} name="emailRecipients" maxLength={500} defaultValue={esc.emailRecipients ?? ''} placeholder="oncall@datumlab.xyz, lead@datumlab.xyz" />
-            </label>
-          </div>
-          <div className="actions"><button className="act act-primary" type="submit">Save escalation policy</button></div>
-        </form>
-      </section>
-
-      <section className="panel">
-        <div className="panel-head"><h2>Notification channels</h2><span className="panel-note">where each severity is delivered</span></div>
-        <div className="legend" style={{ marginTop: 0, marginBottom: 12 }}>
-          <span className="legend-item"><i className={`cov-key ${telegramOk ? 'cov-yes' : 'cov-blocked'}`}>{telegramOk ? '✓' : '✕'}</i> Telegram {telegramOk ? 'connected' : 'not configured'}</span>
-          <span className="legend-item"><i className={`cov-key ${emailOk ? 'cov-yes' : 'cov-blocked'}`}>{emailOk ? '✓' : '✕'}</i> Email {emailOk ? (process.env.ONCHAINSUITE_SECRET_KEY ? 'via Onchain Suite' : 'via Resend') : 'needs ONCHAINSUITE_SECRET_KEY'}</span>
-        </div>
-        <div className="cov-wrap">
-          <table className="cov-table">
-            <thead><tr><th align="left">Severity</th><th>Telegram</th><th>Email</th><th></th></tr></thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Severity</TableHead>
+                <TableHead>Delivery</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {channels.map((c) => (
-                <tr key={c.severity}>
-                  <td align="left"><span className={`badge ${SEV[c.severity] ?? ''}`}>{c.severity}</span></td>
-                  <td colSpan={3} align="left">
-                    <form action={saveChannel} className="actor-form">
+                <TableRow key={c.severity}>
+                  <TableCell><SevBadge severity={c.severity} /></TableCell>
+                  <TableCell>
+                    <form action={saveChannel} className="flex flex-wrap items-center gap-4">
                       <input type="hidden" name="severity" value={c.severity} />
-                      <label className="chan-check"><input type="checkbox" name="telegram" defaultChecked={c.telegram} /> Telegram</label>
-                      <label className="chan-check"><input type="checkbox" name="email" defaultChecked={c.email} /> Email</label>
-                      <button className="act" type="submit">Save</button>
+                      <label htmlFor={`telegram-${c.severity}`} className="flex items-center gap-2 text-sm">
+                        <input id={`telegram-${c.severity}`} type="checkbox" name="telegram" defaultChecked={c.telegram} className="size-4 accent-primary" /> Telegram
+                      </label>
+                      <label htmlFor={`email-${c.severity}`} className="flex items-center gap-2 text-sm">
+                        <input id={`email-${c.severity}`} type="checkbox" name="email" defaultChecked={c.email} className="size-4 accent-primary" /> Email
+                      </label>
+                      <Button type="submit" variant="outline" size="sm">Save</Button>
                     </form>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="panel-note" style={{ marginTop: 10 }}>
-          <b>info</b> never pages. If a severity has Email on but no provider key is set, the send is skipped and dead-lettered — Telegram stays the reliable default.
-        </p>
-      </section>
+            </TableBody>
+          </Table>
+          <p className="text-sm text-muted-foreground">
+            If a severity has email on but no provider key is set, the send is skipped and dead-lettered.
+          </p>
+        </CardContent>
+      </Card>
 
-      <section className="panel">
-        <div className="panel-head"><h2>Recent escalations</h2><span className="panel-note">last {recent.length} paged past the window</span></div>
-        {recent.length === 0 ? (
-          <p className="panel-note">No escalations yet. Incidents that get acknowledged in time never reach here.</p>
-        ) : (
-          <ul className="timeline">
-            {recent.map((r) => (
-              <li key={r.id} className="tl-note">
-                <span className="tl-time">{fmtTime(r.escalated_at)}</span>
-                <span className={`badge ${SEV[r.severity] ?? ''}`}>{r.severity}</span>{' '}
-                <b>{r.dashboard_name}</b> — <a className="card-detail" href={`/setnel/incident/${r.id}`}>{r.message}</a>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* Recent escalations. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent escalations</CardTitle>
+          <CardDescription>The last {recent.length} incidents paged past the window. Incidents acknowledged in time never reach here.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recent.length === 0 ? (
+            <Empty>
+              <EmptyMedia variant="icon"><BellRingingIcon /></EmptyMedia>
+              <EmptyTitle>No escalations yet</EmptyTitle>
+              <EmptyDescription>Incidents that get acknowledged in time never reach here. Tune the window above if the team needs longer to respond.</EmptyDescription>
+            </Empty>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {recent.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="font-mono text-xs tabular-nums text-muted-foreground">{fmtTime(r.escalated_at)}</span>
+                  <SevBadge severity={r.severity} />
+                  <span className="font-medium">{r.dashboard_name}</span>
+                  <Link href={`/setnel/incident/${r.id}`} className="text-muted-foreground underline underline-offset-4 hover:text-primary">{r.message}</Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }
