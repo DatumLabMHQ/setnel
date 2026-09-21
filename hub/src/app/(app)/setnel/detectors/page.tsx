@@ -1,21 +1,21 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { isAuthed } from '@/lib/session';
 import { getDetectorRegistry, getBaselineMetrics, type DetectorRow } from '@/lib/admin';
+import { timeAgo } from '@/lib/format';
 import { setDetectorSeverity, setBaselineThreshold } from '../config-actions';
 import { DetectorToggle } from './detector-toggle';
+import { PageHeader } from '@/components/page-header';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { NativeSelect } from '@/components/ui/native-select';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty';
 
 export const dynamic = 'force-dynamic';
 
 const SEV_OPTS = ['info', 'warning', 'critical', 'emergency'] as const;
-
-function timeAgo(iso: string | null): string {
-  if (!iso) return 'never';
-  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  return h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
-}
 
 export default async function DetectorsPage() {
   if (!(await isAuthed())) redirect('/login');
@@ -31,111 +31,146 @@ export default async function DetectorsPage() {
   const enabledCount = detectors.filter((d) => d.enabled).length;
   const tuned = baselines.filter((b) => b.z != null || b.minPct != null || !b.enabled).length;
 
+  const kpis = [
+    { label: 'Detectors', value: String(detectors.length), sub: `${enabledCount} enabled` },
+    { label: 'Dashboards', value: String(groups.size), sub: 'with detectors' },
+    { label: 'Baseline metrics', value: String(baselines.length), sub: `${tuned} tuned` },
+  ];
+
   return (
     <>
-      <section className="panel">
-        <div className="panel-head"><h2>Detectors</h2><span className="panel-note">every detection rule, and how to tune it</span></div>
-        <div className="kpis" style={{ marginTop: 4 }}>
-          <div className="kpi"><div className="kpi-label">Detectors</div><div className="kpi-value">{detectors.length}</div><div className="kpi-sub">{enabledCount} enabled</div></div>
-          <div className="kpi"><div className="kpi-label">Dashboards</div><div className="kpi-value">{groups.size}</div><div className="kpi-sub">with detectors</div></div>
-          <div className="kpi"><div className="kpi-label">Baseline metrics</div><div className="kpi-value">{baselines.length}</div><div className="kpi-sub">{tuned} tuned</div></div>
-        </div>
-        <p className="panel-note" style={{ marginTop: 12 }}>
-          Disabling a detector drops its events at ingest (no incident, no page). Severity override replaces the
-          detector&rsquo;s own severity on every future incident. Changes take effect on the next detector run and are logged to the <a className="card-detail" href="/setnel/inbox">Inbox</a>.
-        </p>
+      <PageHeader
+        eyebrow="Detectors"
+        question="Which rules are watching, and how are they tuned?"
+        answer="Every detection rule across the fleet. Disable one to drop its events at ingest, force a severity, or open it to tune its thresholds."
+      />
+
+      {/* At a glance: how many rules, where, and how much has been tuned. */}
+      <section className="grid grid-cols-3 gap-4">
+        {kpis.map((k) => (
+          <Card key={k.label}>
+            <CardHeader className="gap-1 pb-0">
+              <CardDescription>{k.label}</CardDescription>
+              <CardTitle className="font-mono text-2xl tabular-nums">{k.value}</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-1 text-xs text-muted-foreground">{k.sub}</CardContent>
+          </Card>
+        ))}
       </section>
 
+      <p className="max-w-[72ch] px-4 text-sm text-muted-foreground lg:px-6">
+        Disabling a detector drops its events at ingest, so no incident and no page. A severity override replaces the
+        detector&rsquo;s own severity on every future incident. Changes take effect on the next detector run and are logged to the{' '}
+        <Link href="/setnel/inbox" className="text-foreground underline underline-offset-4">inbox</Link>.
+      </p>
+
       {[...groups.entries()].map(([dashboardId, rows]) => (
-        <section className="panel" key={dashboardId}>
-          <div className="panel-head"><h2>{dashboardId}</h2><span className="panel-note">{rows.length} detectors</span></div>
-          <div className="cov-wrap">
-            <table className="cov-table">
-              <thead>
-                <tr>
-                  <th align="left">Detector</th>
-                  <th>90-day fires</th>
-                  <th>False&nbsp;pos.</th>
-                  <th>Last seen</th>
-                  <th>Severity</th>
-                  <th>State</th>
-                </tr>
-              </thead>
-              <tbody>
+        <Card key={dashboardId}>
+          <CardHeader>
+            <CardTitle>{dashboardId}</CardTitle>
+            <CardDescription>{rows.length} detectors on this dashboard, with 90 day fire counts and current state.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Detector</TableHead>
+                  <TableHead className="text-right">90 day fires</TableHead>
+                  <TableHead className="text-right">False positives</TableHead>
+                  <TableHead className="text-right">Last seen</TableHead>
+                  <TableHead>Severity</TableHead>
+                  <TableHead>State</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {rows.map((d) => {
                   const fpRate = d.total > 0 ? Math.round((d.falsePositives / d.total) * 100) : 0;
                   return (
-                    <tr key={d.detectorId}>
-                      <td align="left" className="cov-risk"><a className="card-detail" href={`/setnel/detectors/${d.dashboardId}/${encodeURIComponent(d.detectorId)}`}>{d.detectorId}</a></td>
-                      <td>{d.total}</td>
-                      <td className={fpRate >= 30 ? 'cov-blocked' : ''}>{d.falsePositives}{d.total ? ` · ${fpRate}%` : ''}</td>
-                      <td>{timeAgo(d.lastSeen)}</td>
-                      <td align="left">
-                        <form action={setDetectorSeverity} className="actor-form">
+                    <TableRow key={d.detectorId}>
+                      <TableCell>
+                        <Link
+                          href={`/setnel/detectors/${d.dashboardId}/${encodeURIComponent(d.detectorId)}`}
+                          className="font-mono text-foreground underline-offset-4 hover:underline"
+                        >
+                          {d.detectorId}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">{d.total}</TableCell>
+                      <TableCell className={`text-right font-mono tabular-nums ${fpRate >= 30 ? 'text-(--critical)' : ''}`}>
+                        {d.falsePositives}{d.total ? ` · ${fpRate}%` : ''}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">{timeAgo(d.lastSeen)}</TableCell>
+                      <TableCell>
+                        <form action={setDetectorSeverity} className="flex items-center gap-2">
                           <input type="hidden" name="dashboardId" value={d.dashboardId} />
                           <input type="hidden" name="detectorId" value={d.detectorId} />
-                          <select name="severity" defaultValue={d.severityOverride ?? ''} className="actor-input" style={{ width: 120 }}>
+                          <NativeSelect name="severity" defaultValue={d.severityOverride ?? ''} size="sm" className="w-32">
                             <option value="">detector default</option>
                             {SEV_OPTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                          <button className="ghost-btn" type="submit">Set</button>
+                          </NativeSelect>
+                          <Button type="submit" variant="outline" size="sm">Set</Button>
                         </form>
-                      </td>
-                      <td align="left">
+                      </TableCell>
+                      <TableCell>
                         <DetectorToggle dashboardId={d.dashboardId} detectorId={d.detectorId} enabled={d.enabled} />
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        </section>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       ))}
 
-      <section className="panel">
-        <div className="panel-head"><h2>Baseline anomaly thresholds</h2><span className="panel-note">per-metric tuning for the adaptive detector</span></div>
-        <p className="panel-note" style={{ marginBottom: 12 }}>
-          The baseline detector fires when a metric moves beyond both a sigma (z) threshold and a minimum percent. Leave a
-          field blank to use the global default (z {process.env.SETNEL_BASELINE_Z || '3'}, min {process.env.SETNEL_BASELINE_MIN_PCT || '8'}%). Disable to silence anomaly alerts for that metric.
-        </p>
-        <div className="cov-wrap">
-          <table className="cov-table">
-            <thead>
-              <tr>
-                <th align="left">Metric</th>
-                <th>Samples</th>
-                <th>z threshold</th>
-                <th>Min %</th>
-                <th>State</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {baselines.length === 0 ? (
-                <tr><td align="left" colSpan={6} className="panel-note">No sampled metrics yet.</td></tr>
-              ) : baselines.map((b) => (
-                <tr key={b.metricKey}>
-                  <td align="left" className="cov-risk" style={{ verticalAlign: 'middle' }}>{b.metricKey}</td>
-                  <td style={{ verticalAlign: 'middle' }}>{b.samples}</td>
-                  <td colSpan={4} align="left">
-                    <form action={setBaselineThreshold} className="actor-form" style={{ flexWrap: 'wrap' }}>
-                      <input type="hidden" name="metricKey" value={b.metricKey} />
-                      <input className="actor-input" style={{ width: 90 }} name="z" type="number" step="0.1" min="0" defaultValue={b.z ?? ''} placeholder="default" />
-                      <input className="actor-input" style={{ width: 90 }} name="minPct" type="number" step="0.5" min="0" defaultValue={b.minPct ?? ''} placeholder="default" />
-                      <select name="enabled" defaultValue={String(b.enabled)} className="actor-input" style={{ width: 100 }}>
-                        <option value="true">enabled</option>
-                        <option value="false">disabled</option>
-                      </select>
-                      <button className="act act-primary" type="submit">Save</button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Baseline anomaly thresholds</CardTitle>
+          <CardDescription>Per metric tuning for the adaptive detector, showing samples collected and any saved override.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="max-w-[72ch] text-sm text-muted-foreground">
+            The baseline detector fires when a metric moves beyond both a sigma (z) threshold and a minimum percent. Leave a
+            field blank to use the global default (z {process.env.SETNEL_BASELINE_Z || '3'}, min {process.env.SETNEL_BASELINE_MIN_PCT || '8'}%). Disable to silence anomaly alerts for that metric.
+          </p>
+          {baselines.length === 0 ? (
+            <Empty>
+              <EmptyTitle>No sampled metrics yet</EmptyTitle>
+              <EmptyDescription>Once metrics start reporting, they will appear here for tuning.</EmptyDescription>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Metric</TableHead>
+                  <TableHead className="text-right">Samples</TableHead>
+                  <TableHead>Tuning</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {baselines.map((b) => (
+                  <TableRow key={b.metricKey}>
+                    <TableCell className="align-middle font-mono">{b.metricKey}</TableCell>
+                    <TableCell className="text-right align-middle font-mono tabular-nums">{b.samples}</TableCell>
+                    <TableCell>
+                      <form action={setBaselineThreshold} className="flex flex-wrap items-center gap-2">
+                        <input type="hidden" name="metricKey" value={b.metricKey} />
+                        <Input className="w-24" name="z" type="number" step="0.1" min="0" defaultValue={b.z ?? ''} placeholder="z default" />
+                        <Input className="w-24" name="minPct" type="number" step="0.5" min="0" defaultValue={b.minPct ?? ''} placeholder="min default" />
+                        <NativeSelect name="enabled" defaultValue={String(b.enabled)} size="sm" className="w-28">
+                          <option value="true">enabled</option>
+                          <option value="false">disabled</option>
+                        </NativeSelect>
+                        <Button type="submit" size="sm">Save</Button>
+                      </form>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }

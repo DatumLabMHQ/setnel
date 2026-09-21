@@ -1,34 +1,29 @@
+// The frame every Setnel app page shares: the kit's inset Sidebar with Setnel's nav, a slim header,
+// and a footer. The auth gate stays here: an unauthenticated visitor never reaches the shell.
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { isAuthed } from '@/lib/session';
-import { getSummary } from '@/lib/queries';
-import { currentUser } from '@/lib/users';
-import { Sidebar } from './shell/Sidebar';
-import { Topbar } from './shell/Topbar';
-import { CommandPalette } from './shell/CommandPalette';
-import { MobileNav } from './shell/MobileNav';
+import { AppSidebar } from '@/components/app-sidebar';
+import { SiteFooter } from '@/components/site-footer';
+import { SiteHeader } from '@/components/site-header';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AppShell({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
   if (!(await isAuthed())) redirect('/login');
-  const [summary, jar, me] = await Promise.all([getSummary(), cookies(), currentUser()]);
-
-  let prefs = { density: 'comfortable', colorblind: false };
-  try { prefs = { ...prefs, ...JSON.parse(jar.get('setnel_prefs')?.value ?? '{}') }; } catch { /* default */ }
-  const shellClass = `shell-root${prefs.density === 'compact' ? ' density-compact' : ''}${prefs.colorblind ? ' cb-safe' : ''}`;
 
   return (
-    <div className={shellClass}>
-      <Sidebar activeCount={summary.activeCount} />
-      <div className="shell-main">
-        <Topbar criticalActive={summary.criticalActive} activeCount={summary.activeCount} userName={me?.name ?? null} />
-        <main className="shell-content">
-          <div className="content-rail">{children}</div>
-        </main>
-      </div>
-      <CommandPalette />
-      <MobileNav activeCount={summary.activeCount} />
-    </div>
+    <SidebarProvider style={{ '--sidebar-width': 'calc(var(--spacing) * 64)', '--header-height': 'calc(var(--spacing) * 12)' } as React.CSSProperties}>
+      <AppSidebar variant="inset" />
+      <SidebarInset>
+        <SiteHeader />
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div data-slot="page" className="mx-auto flex w-full max-w-(--max) flex-col gap-4 px-4 py-4 md:gap-6 md:px-6 md:py-6">{children}</div>
+          </div>
+          <SiteFooter />
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
