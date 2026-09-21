@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { isAuthed } from '@/lib/session';
-import { getMetricsOverview, type MetricSeries } from '@/lib/queries';
+import { getMetricsOverview } from '@/lib/queries';
+import { BacktestChart } from './backtest-chart';
 import { backtestFires } from '@/lib/detect';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,7 +47,7 @@ export default async function BacktestPage() {
                         {m.points.length <= MIN_SAMPLES ? 'low data' : `${fired.length} fires`}
                       </span>
                     </div>
-                    <BtChart m={m} fired={fired} />
+                    <BacktestChart m={m} fired={fired} />
                     <div className="mt-1 text-xs text-muted-foreground">{m.dashboardName} · {m.points.length} samples</div>
                   </div>
                 );
@@ -63,20 +64,3 @@ export default async function BacktestPage() {
   );
 }
 
-function BtChart({ m, fired }: { m: MetricSeries; fired: number[] }) {
-  const W = 300, H = 84, pad = 6;
-  const vals = m.points.map((p) => p.value);
-  const lo = Math.min(...vals), hi = Math.max(...vals);
-  const range = hi - lo || 1;
-  const n = m.points.length;
-  const x = (i: number) => pad + (i / (n - 1)) * (W - 2 * pad);
-  const y = (v: number) => pad + (1 - (v - lo) / range) * (H - 2 * pad);
-  const line = m.points.map((p, i) => `${x(i)},${y(p.value)}`).join(' ');
-  const firedSet = new Set(fired);
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full text-foreground" preserveAspectRatio="none">
-      <polyline points={line} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" />
-      {m.points.map((p, i) => (firedSet.has(i) ? <circle key={i} cx={x(i)} cy={y(p.value)} r={2.6} fill="var(--critical)" /> : null))}
-    </svg>
-  );
-}

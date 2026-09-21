@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { isAuthed } from '@/lib/session';
 import { getSla, getDetectorStats } from '@/lib/queries';
-import { getWeeklyReport, getSloTargets, type WeekRow } from '@/lib/admin';
+import { getWeeklyReport, getSloTargets } from '@/lib/admin';
+import { WeeklyTrends } from './report-charts';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -71,12 +72,7 @@ export default async function ReportsPage() {
             </Empty>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <TrendPanel title="Incidents per week" rows={weeks} pick={(w) => w.incidents} fmt={(v) => String(v)} />
-                <TrendPanel title="Time to ack (min)" rows={weeks} pick={(w) => w.mttaMin} fmt={(v) => (v == null ? 'n/a' : `${v}m`)} />
-                <TrendPanel title="Time to resolve (min)" rows={weeks} pick={(w) => w.mttrMin} fmt={(v) => (v == null ? 'n/a' : `${v}m`)} />
-                <TrendPanel title="False positive %" rows={weeks} pick={(w) => (w.incidents ? Math.round((w.falsePositives / w.incidents) * 100) : 0)} fmt={(v) => `${v}%`} />
-              </div>
+              <WeeklyTrends weeks={weeks} />
               <div className="mt-4">
                 <Table>
                   <TableHeader>
@@ -155,39 +151,3 @@ export default async function ReportsPage() {
   );
 }
 
-// A compact bar chart of one weekly metric, newest on the right.
-function TrendPanel({ title, rows, pick, fmt }: { title: string; rows: WeekRow[]; pick: (w: WeekRow) => number | null; fmt: (v: number | null) => string }) {
-  const vals = rows.map(pick);
-  const nums = vals.filter((v): v is number => v != null);
-  const max = nums.length ? Math.max(...nums) : 1;
-  const latest = vals[vals.length - 1];
-  const W = 300, H = 84, pad = 6, n = rows.length;
-  const bw = (W - 2 * pad) / n;
-  return (
-    <div className="rounded-lg border border-border p-3">
-      <div className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="text-xs text-muted-foreground">{title}</span>
-        <span className="font-mono text-sm tabular-nums">{fmt(latest)}</span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="none">
-        {rows.map((_, i) => {
-          const v = vals[i];
-          if (v == null) return null;
-          const h = max > 0 ? (v / max) * (H - 2 * pad) : 0;
-          const isLatest = i === n - 1;
-          return (
-            <rect
-              key={i}
-              x={pad + i * bw + 1}
-              y={H - pad - h}
-              width={Math.max(1, bw - 2)}
-              height={Math.max(0, h)}
-              fill={isLatest ? 'var(--foreground)' : 'var(--muted-foreground)'}
-              fillOpacity={isLatest ? 1 : 0.35}
-            />
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
