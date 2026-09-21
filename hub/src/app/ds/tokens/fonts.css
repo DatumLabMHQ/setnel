@@ -1,7 +1,0 @@
-/* Setnel typefaces — Geist + Geist Mono.
-   The live product ships the system stack; per the v2 rework the team chose a
-   distinctive UI typeface. Geist (Vercel's grotesque) is the deliberate pick:
-   institutional, precise, excellent tabular figures — the Linear/Vercel bar the
-   rework targets. Geist Mono carries all data (metric values, IDs, timestamps).
-   Loaded from Google Fonts; swap for self-hosted binaries before production. */
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
