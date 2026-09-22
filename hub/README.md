@@ -35,7 +35,8 @@ npm run dev
 
 ## Deploy
 
-Hosted on Vercel (project `setnel-hub`, aliased to `setnel.datumlab.xyz`).
+Hosted on Vercel, Datum Labs account, project `setnel-hub-datum`, aliased to `setnel.datumlab.xyz`.
+It redeploys on every push to `main`.
 Env vars are set in the Vercel project, not committed.
 
 ## Onboarding a new dashboard

@@ -1,198 +1,177 @@
-# datum-monitor
+# Setnel
 
 > Part of [Atlas](https://github.com/DatumLabMHQ/atlas), Datum Labs' internal data infrastructure. Start there for how the parts fit together.
 
-Alert + digest system for Datum Labs dashboards. Hits each dashboard's JSON
-API routes on a schedule, compares values against thresholds, and pages the
-risk team on breaches. Every 6 hours it emails + TGs a digest.
+Setnel is the watch. It monitors the Datum data platform and every dashboard built on it, keeps
+the history of what each of them reported, raises an incident when something is wrong, pages a
+human only when a human needs to act, and each morning writes the content brief from what the
+data did overnight.
 
-## Architecture
+It is one product with two jobs that share a database. The **risk** side asks whether anything is
+broken and tells somebody. The **content** side asks whether anything happened worth writing
+about and drafts it. They share a database because both questions are answered from the same
+history, and a thing that is both broken and interesting should only be noticed once.
+
+The console is at **https://setnel.datumlab.xyz**, behind a sign-in.
+
+## How it works
 
 ```
-┌────────────────┐     every 15m        ┌──────────────────┐
-│ GitHub Actions ├─────────────────────▶│   npm run check   │
-│ monitor-check  │                      ├──────────────────┤
-└────────────────┘                      │ 1. fetch /api/*  │
-                                        │ 2. diff vs last  │───▶ Telegram (urgent)
-┌────────────────┐     every 6h         │ 3. store fresh   │
-│ GitHub Actions ├─────────────────────▶│ 4. fire alerts   │
-│ monitor-digest │                      └──────────────────┘
-└────────────────┘                               │
-                                                 ▼
-                                        ┌──────────────────┐
-                                        │  Upstash Redis   │
-                                        │ snapshots + hist │
-                                        └──────────────────┘
-                                                 │
-                                        ┌────────┴─────────┐
-                                        │  npm run digest  │───▶ Telegram + Email (6h report)
-                                        └──────────────────┘
+  a dashboard's own detectors            setnel's own detectors
+  (in each dashboard's repo,             (scripts/detectors, for the platform
+   on a five-minute cron)                 and for products with no dashboard)
+        |                                        |
+        +--------------------+-------------------+
+                             |
+                   POST /api/v1/events           signed with the dashboard's
+                             |                   shared secret, HMAC-SHA256
+                             v
+                    +-----------------+
+                    |   the hub       |  Next.js on Vercel, Neon Postgres
+                    +-----------------+
+                             |
+     every event is stored, then collapsed by fingerprint into an incident,
+     so a condition that persists is one incident with a count rather than
+     a thousand alerts
+                             |
+        +--------------------+--------------------+
+        |                    |                    |
+        v                    v                    v
+    Telegram              email              the console
+   (critical)        (critical, and the      (incidents, detectors,
+                      daily brief)            metrics, runbooks)
 ```
 
-- **Urgent alerts**: Telegram only (instant; no inbox clutter).
-- **6-hour digest**: Telegram + email (HTML report, per-dashboard metric tables).
-- **State**: Upstash Redis free tier. Keys are namespaced `datum-monitor:*`.
-- **Cooldown**: the same alert won't re-fire within 60 min (configurable via
-  `ALERT_COOLDOWN_MINUTES`). This is why the exit code is non-zero only on
-  *fresh* critical alerts.
+An event carries a message, a fingerprint, a severity and a payload. The fingerprint is the
+identity of the thing being reported, so the same condition seen a hundred times becomes one
+incident. A reading identical to the one already on the incident never pages again, and an
+incident that nobody resolves backs off from hourly to four-hourly to twelve to daily rather
+than repeating forever.
 
-## What it alerts on
+## Severity
 
-- **Technical breakdowns** (always critical): HTTP ≥ 400, timeouts, non-JSON
-  responses, missing expected JSON fields, partial-fetch `warnings[]` in the
-  response body, `/api/health` returning non-`ok` status.
-- **Metric anomalies**: per-metric `percentChange`, `absoluteMin`, `absoluteMax`
-  rules encoded in `config/dashboards.yaml`. See that file for the v1 rule set
-  (TVL drops, borrow spikes, utilization ceilings, liquidation spikes,
-  revenue swings, redemption spikes, etc.).
+Critical means money is at risk now and somebody must act within the hour. Everything else is a
+warning that goes to the brief and the console without paging.
 
-## Setup
+The full definition, including the three gates a rule passes before it can reach critical, is in
+[datum-context/house/severity.md](https://github.com/DatumLabMHQ/datum-context/blob/main/house/severity.md).
+It is not optional reading before writing a rule. It was written after a day on which 290
+critical alerts were raised and not one of them was real.
 
-### 1. Install
+## The rules
 
-```bash
-cd datum-monitor
-npm install
-cp .env.example .env
-# fill in .env with real creds
-```
+`rules/` holds one YAML file per content rule: what it reads, at what threshold, how often, who
+owns it and whether it is live. Thresholds change there by pull request rather than by a deploy,
+and Joel reviews them.
 
-### 2. Create the external services (one-time)
-
-**Upstash Redis** — [upstash.com/redis](https://upstash.com/redis), "Create
-Database", copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` from
-the Details tab.
-
-**Telegram bot** —
-1. Chat with [@BotFather](https://t.me/BotFather) → `/newbot` → save the token.
-2. Create a private channel or group, add the bot as admin.
-3. Send any message in the channel, then visit
-   `https://api.telegram.org/bot<TOKEN>/getUpdates` and copy the
-   `chat.id` (negative number for channels).
-
-**Resend** — [resend.com](https://resend.com). Add and verify your sending
-domain (e.g. `alerts.datumlabs.xyz`), create an API key. Without a verified
-domain you can only send to the test inbox.
-
-### 3. Local test run
-
-```bash
-# Validate the YAML + show which dashboards are enabled
-npm run lint:config
-
-# Dry-run one check (uses Redis; will start writing snapshots)
-npm run check
-
-# Force a digest send
-npm run digest
-```
-
-If any credential is missing, the relevant notifier silently skips (prints
-a warning to stderr) so you can iterate on the fetch + threshold logic
-without wiring everything up.
-
-### 4. Deploy to GitHub Actions
-
-Push this repo to GitHub (new private repo `datum-labs/datum-monitor`).
-Settings → Secrets and variables → Actions → add:
-
-| Secret | Source |
+| | |
 |---|---|
-| `UPSTASH_REDIS_REST_URL` | Upstash Details tab |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash Details tab |
-| `TELEGRAM_BOT_TOKEN` | BotFather |
-| `TELEGRAM_CHAT_ID` | `getUpdates` output |
-| `RESEND_API_KEY` | Resend dashboard |
-| `EMAIL_FROM` | e.g. `alerts@datumlabs.xyz` (must be on verified domain) |
-| `EMAIL_TO` | comma-separated recipient list |
+| Rules in the manifest | 32 |
+| Live | 14 |
+| Waiting on data the platform does not hold yet | 18 |
 
-The two scheduled workflows (`monitor-check.yml`, `monitor-digest.yml`) run
-automatically once pushed to `main`. You can trigger them by hand from the
-Actions tab via `workflow_dispatch`.
+`scripts/rules/engine.mjs` runs the live ones and applies the shared noise gates so no rule
+re-implements a size floor. `scripts/backtest.mjs` replays any rule over the platform's history
+with different thresholds, so a number is chosen from evidence rather than from instinct. Read
+[rules/README.md](rules/README.md) before adding one.
 
-## Configuration — `config/dashboards.yaml`
+## What reports in
 
-Each dashboard block:
+Four sources report to the hub today.
 
-```yaml
-- id: aave
-  name: Aave
-  baseUrl: https://aave.datumlabs.xyz
-  healthPath: /api/health            # optional, default /api/health
-  enabled: true
-  metrics:
-    - id: total_market_size           # unique within dashboard
-      label: TVL (market size)        # shown in alerts + digest
-      path: /api/aave/overview        # appended to baseUrl
-      extract: totalMarketSize        # dot path into JSON response
-      unit: usd                       # usd | percent | count | raw
-      alert:
-        percentChange: 15             # fire if |Δ%| > 15 vs last snapshot
-        critical: true                # flag as critical (exit non-zero)
+| Dashboard | What it watches |
+|---|---|
+| `platform` | the Datum data platform itself: freshness, job failures, reconciliation against outside references |
+| `aave` | the Aave dashboard's own detectors |
+| `rwa` | the RWA terminal |
+| `sui` | the Sui lending terminal |
+
+Six more are registered and disabled, left over from dashboards that have been replaced or that
+belong to clients.
+
+A dashboard owner wires a new one in by following
+[hub/docs/ONBOARD_A_DASHBOARD.md](hub/docs/ONBOARD_A_DASHBOARD.md): register the dashboard and a
+shared secret, copy the runtime from `hub/templates/` into the dashboard's repo, write detectors
+against its own API routes, and set three environment variables. Nothing in this repository needs
+to change.
+
+## The timetable
+
+Every job here is dispatched by
+[datum-scheduler](https://github.com/DatumLabMHQ/datum-scheduler), because GitHub's own cron
+delayed a fifteen-minute schedule to three runs in three days. All times UTC.
+
+| Workflow | When | What |
+|---|---|---|
+| `setnel-ping` | every 5 minutes | triggers each dashboard's detector run and keeps them warm |
+| `setnel-platform` | every 15 minutes | watches the platform's health |
+| `setnel-watchdog` | every 15 minutes | watches Setnel, in case the watch itself stops |
+| `setnel-rwa` | every 15 minutes at :10 | the RWA terminal's detectors |
+| `setnel-resolve` | every 30 minutes at :05 | closes incidents whose condition has cleared |
+| `setnel-analyze` | every 30 minutes at :20 | anomaly detection over the metric history |
+| `setnel-crosscheck` | hourly at :40 | compares our numbers against outside references |
+| `setnel-content` | hourly :25, daily 07:10, Mondays 07:15 | the content rules |
+| `setnel-content-digest` | 07:25 | the daily brief, sent only when something fired |
+| `setnel-escalation-weekly` | Mondays 08:00 | every critical nobody acknowledged this week |
+
+## Layout
+
+| Path | What |
+|---|---|
+| `hub/` | the Setnel Hub: the Next.js console, the signed ingest endpoint, the incident logic, the notifiers and the database schema. Its own [README](hub/README.md) covers running it. |
+| `rules/` | the content rule manifest, one YAML per rule |
+| `scripts/rules/` | the rules engine, the shared noise gates and one module per rule |
+| `scripts/detectors/` | Setnel's own detectors for the platform, the RWA terminal and the content signals |
+| `scripts/watchdog.mjs` | the outermost check, which pages if the hub stops answering |
+| `design-system/` | the Setnel look, shared with the Datum UI kit |
+| `config/`, `src/` | the legacy v1 watcher, described below |
+
+## The legacy watcher, and a decision waiting
+
+`src/` and `config/dashboards.yaml` are the original 2026 monitor: a command-line checker that
+polls dashboard JSON routes, compares values against thresholds in YAML, keeps its state in
+Upstash Redis and sends its own Telegram messages and its own six-hourly digest. It predates the
+hub and is not connected to it.
+
+It is still running, on GitHub's own cron, through `monitor-check.yml`, `monitor-digest.yml` and
+`monitor-warmup.yml`. As of 22 September 2026 each check reports eight critical technical alerts
+out of twenty-three samples, because the dashboards it polls were rebuilt on the Datum standard
+and the JSON field paths in the YAML no longer resolve. Those alerts go to the same Telegram
+channel as the hub's, from a system nobody is reading.
+
+Three ways to settle it, in the order they are worth considering: retire the v1 watcher now that
+the hub covers everything it covered, or repoint its field paths at the rebuilt dashboards if it
+is still earning its place, or at minimum turn off its schedules so it stops reporting into a
+channel people are trying to trust. This is the only part of the repository that is not doing
+what it looks like it is doing, and it deserves a decision rather than another month of drift.
+
+## Running it
+
+The hub:
+
+```bash
+cd hub
+npm install
+cp .env.example .env     # DATABASE_URL, TELEGRAM_*, RESEND_API_KEY, SETNEL_* secrets
+npm run db:push          # schema and seed
+npm run dev
+npm test                 # the incident state machine and the rule gates
 ```
 
-Supported `alert` fields:
+The rules, against the platform, without sending anything:
 
-- `percentChange: N` — fire if `|Δ%|` vs prior snapshot > N.
-- `absoluteMin: N` / `absoluteMax: N` — hard bounds.
-- `windowHours: N` — compare vs snapshot N hours ago (default: previous run).
-- `critical: true` — mark as critical; exits the workflow non-zero.
-
-Supported `extract` path syntax:
-
-- Dot notation: `totals.tvlUsd`
-- Array index: `pools[0].utilization` or `pools.0.utilization`
-
-Set `allowMissing: true` on a metric if the field is legitimately optional
-(e.g. `dataQuality` only present when reconciliation ran) — otherwise
-missing fields fire a technical alert.
-
-## Adding a new dashboard
-
-1. Deploy the dashboard with an `/api/health` route returning
-   `{ status: "ok" }`. Example: [Aave health route](../Datum%20Dashboards/aave-dashboard/app/api/health/route.ts).
-2. Append a block to `config/dashboards.yaml` with `baseUrl`, `healthPath`,
-   and the metrics you care about.
-3. `npm run lint:config` to validate.
-4. Commit + push. The next cron tick will include it.
-
-Colleague-owned dashboards don't need source access — just the deployed URL
-and knowledge of which JSON fields to extract.
-
-## Tuning alerts
-
-The v1 config uses fixed percent thresholds. After a week of data in the
-digest, you'll see which metrics are naturally volatile and which are
-surprisingly stable — tune the numbers in the YAML. Common follow-ups:
-
-- Add `windowHours: 24` to compare vs a day ago instead of the last 15 min
-  (smooths out intraday noise).
-- Raise `percentChange` on anything that spams the TG channel.
-- Add `absoluteMax` on utilization for *each* pool (v1 only covers pool 0–2
-  by index — extend as assets are listed).
-
-## File map
-
+```bash
+node scripts/rules/engine.mjs --schedule all --dry-run
+node scripts/backtest.mjs --rule tvl_wow --since 2025-09-01
 ```
-datum-monitor/
-├── config/dashboards.yaml         # all thresholds and endpoints
-├── src/
-│   ├── index.ts                   # CLI: check | digest | validate-config
-│   ├── config.ts                  # YAML loader + zod validation
-│   ├── types.ts                   # Config + Alert + Sample types
-│   ├── extract.ts                 # JSON dot-path resolver
-│   ├── fetcher.ts                 # HTTP fetch with timeout + latency
-│   ├── storage.ts                 # Upstash Redis: snapshots + history
-│   ├── check.ts                   # main check loop
-│   ├── digest.ts                  # 6h report orchestration
-│   ├── render.ts                  # TG (text) + email (HTML) formatting
-│   └── notifiers/
-│       ├── telegram.ts
-│       └── email.ts
-├── .github/workflows/
-│   ├── monitor-check.yml          # every 15 min
-│   ├── monitor-digest.yml         # every 6 hours
-│   └── typecheck.yml              # on PR / push
-├── .env.example
-└── package.json
-```
+
+## Where it runs
+
+| Thing | Where |
+|---|---|
+| The hub | Vercel, Datum Labs account, project `setnel-hub-datum`, aliased to setnel.datumlab.xyz |
+| The database | Neon Postgres, separate from the data platform's |
+| Every scheduled job | GitHub Actions, dispatched by datum-scheduler |
+| Alerts | Telegram, channel "Setnel by Datum Labs" |
+| Email | Resend, from monitor.datumlab.xyz, to the five recipients in `SETNEL_CONTENT_RECIPIENTS` |
+| Heartbeats | [setnel-pings](https://github.com/DatumLabMHQ/setnel-pings), a public repo where Actions minutes are free |
