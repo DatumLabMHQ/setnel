@@ -1,5 +1,7 @@
 # datum-monitor
 
+> Part of [Atlas](https://github.com/DatumLabMHQ/atlas), Datum Labs' internal data infrastructure. Start there for how the parts fit together.
+
 Alert + digest system for Datum Labs dashboards. Hits each dashboard's JSON
 API routes on a schedule, compares values against thresholds, and pages the
 risk team on breaches. Every 6 hours it emails + TGs a digest.
