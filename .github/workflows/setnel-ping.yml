@@ -8,9 +8,8 @@ name: setnel-ping
 #
 # To add a dashboard: add its cron URL to the CRON_URLS list below.
 
+# Schedule moved to the public DatumLabMHQ/setnel-pings repo on 2026-09-18 (free minutes); keep workflow_dispatch for a manual run.
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 
 concurrency:
