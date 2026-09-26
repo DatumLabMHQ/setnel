@@ -9,7 +9,7 @@ import { usePathname } from 'next/navigation';
 import {
   ArrowSquareOutIcon, BellIcon, BookOpenIcon, CaretRightIcon, ChartLineUpIcon, FolderIcon, GearIcon, HouseIcon,
   LayoutIcon, ListChecksIcon, MagnifyingGlassIcon, PaletteIcon, ShieldIcon, SparkleIcon, SquaresFourIcon, TableIcon, TextboxIcon, UsersThreeIcon,
-  FireIcon, PulseIcon, TargetIcon, TrayIcon, ClockCounterClockwiseIcon,
+  FireIcon, PulseIcon, TargetIcon, TrayIcon, ClockCounterClockwiseIcon, NewspaperIcon,
 } from '@phosphor-icons/react';
 import { site } from '@/site.config';
 import { isActive, NAV_CHILDREN_MAX, type IconMap } from '@/lib/nav';
@@ -23,7 +23,7 @@ const ICONS: IconMap = {
   home: <HouseIcon />, palette: <PaletteIcon />, squares: <SquaresFourIcon />, layout: <LayoutIcon />, table: <TableIcon />,
   list: <ListChecksIcon />, form: <TextboxIcon />, users: <UsersThreeIcon />, gear: <GearIcon />, book: <BookOpenIcon />,
   chart: <ChartLineUpIcon />, bell: <BellIcon />, folder: <FolderIcon />, search: <MagnifyingGlassIcon />, sparkle: <SparkleIcon />, shield: <ShieldIcon />,
-  flame: <FireIcon />, pulse: <PulseIcon />, target: <TargetIcon />, inbox: <TrayIcon />, history: <ClockCounterClockwiseIcon />,
+  flame: <FireIcon />, pulse: <PulseIcon />, target: <TargetIcon />, inbox: <TrayIcon />, history: <ClockCounterClockwiseIcon />, newspaper: <NewspaperIcon />,
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

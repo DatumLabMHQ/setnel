@@ -23,6 +23,7 @@ const NAV: NavEntry[] = [
     children: [{ href: '/setnel/backtest', label: 'Backtest' }],
   },
   { href: '/setnel/content', label: 'Content', icon: 'sparkle' },
+  { href: '/setnel/feed', label: 'Feed', icon: 'newspaper' },
   { href: '/setnel/runbooks', label: 'Runbooks', icon: 'book' },
   { href: '/setnel/escalation', label: 'Escalation', icon: 'bell' },
   { href: '/setnel/settings', label: 'Settings', icon: 'gear' },
