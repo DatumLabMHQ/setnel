@@ -9,7 +9,7 @@ export type IconName =
   | 'home' | 'palette' | 'squares' | 'layout' | 'table' | 'list' | 'form' | 'users' | 'gear'
   | 'book' | 'chart' | 'bell' | 'folder' | 'search' | 'sparkle' | 'shield'
   // Setnel monitoring nav
-  | 'flame' | 'pulse' | 'target' | 'inbox' | 'history';
+  | 'flame' | 'pulse' | 'target' | 'inbox' | 'history' | 'newspaper';
 
 /** How many children a nav entry shows before it links to the page for the rest. */
 export const NAV_CHILDREN_MAX = 12;
