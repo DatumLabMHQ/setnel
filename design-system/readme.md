@@ -9,7 +9,7 @@
 ## Sources this system was built from
 - **GitHub repo:** `Olusegun-Aborode/setnel` (now accessible) — the ground truth. Read in particular: `hub/src/app/globals.css` (the real visual language, mined for every token here), `hub/docs/ROADMAP.md` (the 7-phase product scope → informed the app-shell IA), `hub/src/lib/queries.ts` & `runbooks.ts` (domain vocabulary), `hub/src/app/login/page.tsx`, and the route code under `hub/src/app/(app)/setnel/`. **Explore this repo to build higher-fidelity Setnel work.**
 - **Attached codebase** (mounted, read-only): `setnel/` — the console route (`page.tsx`, `metrics/`, `backtest/`, `runbooks/`, `incident/[id]/`, `actions.ts`, `trend-chart.tsx`, `live.tsx`).
-- **Live product:** https://setnel.datumlab.xyz/ (auth-gated; only the login gate is public).
+- **Live product:** https://setnel-hub.datumlabs.workers.dev/ (auth-gated; only the login gate is public).
 - **Logo:** the real Datum Labs mark (`hub/public/logo.png`) is copied into `assets/logo.png` — a periwinkle (#4F6EF2) rounded square with a white interlocking glyph.
 
 ---

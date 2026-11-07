@@ -26,7 +26,7 @@ dashboards:
   # ───────────── Aave — lending, multi-chain v3/v4 ─────────────
   - id: aave
     name: Aave
-    baseUrl: https://aave-dashboard.vercel.app
+    baseUrl: https://datumlabs-aavev3dashboard.datumlabs.workers.dev
     healthPath: /api/health
     enabled: true
     metrics:
@@ -78,7 +78,7 @@ dashboards:
   # ───────────── Centrifuge — RWA pools ─────────────
   - id: centrifuge
     name: Centrifuge RWA
-    baseUrl: https://datumlabs-centrifuge.vercel.app
+    baseUrl: https://centrifuge-rwa-dashboard.datumlabs.workers.dev
     healthPath: /api/health
     enabled: true
     metrics:
@@ -142,7 +142,7 @@ dashboards:
   # totalBorrowsUsd,tvl} and pools[i].utilization.
   - id: navi
     name: Navi Lending
-    baseUrl: https://sui-lending.vercel.app
+    baseUrl: https://suilending.datumlabs.workers.dev
     healthPath: /api/health
     enabled: true
     metrics:
@@ -229,7 +229,7 @@ dashboards:
   # No /api/health route — using "/" as a 200-check fallback.
   - id: liquidator_economy
     name: Liquidator Economy
-    baseUrl: https://liquidator-economy-dashboard.vercel.app
+    baseUrl: https://liquidator-economy-dashboard.datumlabs.workers.dev
     healthPath: /
     enabled: true
     metrics:
@@ -272,7 +272,7 @@ dashboards:
   # ───────────── Lending intelligence terminal — multi-protocol KPI dashboard ─────────────
   - id: lending_intel
     name: Lending Intelligence Terminal
-    baseUrl: https://lending-intelligence-terminal.vercel.app
+    baseUrl: https://lending-intelligence-terminal.datumlabs.workers.dev
     healthPath: /
     enabled: true
     metrics:
@@ -402,7 +402,7 @@ dashboards:
   # Monitor only catches if the dashboard goes down.
   - id: sui_lending
     name: Sui Lending
-    baseUrl: https://sui-lending.vercel.app
+    baseUrl: https://suilending.datumlabs.workers.dev
     healthPath: /api/health
     enabled: true
     metrics: []

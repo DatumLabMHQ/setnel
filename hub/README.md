@@ -3,7 +3,7 @@
 Risk monitoring for DeFi lending dashboards. Each dashboard runs its own
 detectors on a 5-minute cron and posts findings to the **Setnel Hub**, which
 stores history, deduplicates, routes alerts to Telegram, and renders a private
-console at **https://setnel.datumlab.xyz**.
+console at **https://setnel-hub.datumlabs.workers.dev**.
 
 > This `hub/` directory is the Setnel Hub app. The repo root also holds the
 > legacy `datum-monitor` v1 scripts + the shared GitHub Actions heartbeat
@@ -37,7 +37,7 @@ npm run dev
 
 Hosted on Cloudflare Workers (Datum Labs account) as the Worker `setnel-hub`, built with
 [vinext](https://github.com/cloudflare/vinext): https://setnel-hub.datumlabs.workers.dev.
-`setnel.datumlab.xyz` still points at the old Vercel project until its DNS is moved to the Worker.
+`setnel-hub.datumlabs.workers.dev` still points at the old Vercel project until its DNS is moved to the Worker.
 
 ```bash
 npm run build     # vite build

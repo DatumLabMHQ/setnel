@@ -12,7 +12,7 @@ broken and tells somebody. The **content** side asks whether anything happened w
 about and drafts it. They share a database because both questions are answered from the same
 history, and a thing that is both broken and interesting should only be noticed once.
 
-The console is at **https://setnel.datumlab.xyz**, behind a sign-in.
+The console is at **https://setnel-hub.datumlabs.workers.dev**, behind a sign-in.
 
 ## How it works
 
@@ -169,7 +169,7 @@ node scripts/backtest.mjs --rule tvl_wow --since 2025-09-01
 
 | Thing | Where |
 |---|---|
-| The hub | Cloudflare Workers, Datum Labs account, Worker `setnel-hub` (https://setnel-hub.datumlabs.workers.dev); setnel.datumlab.xyz still points at the old Vercel project |
+| The hub | Cloudflare Workers, Datum Labs account, Worker `setnel-hub` (https://setnel-hub.datumlabs.workers.dev); setnel-hub.datumlabs.workers.dev still points at the old Vercel project |
 | The database | Neon Postgres, separate from the data platform's |
 | Every scheduled job | GitHub Actions, dispatched by datum-scheduler |
 | Alerts | Telegram, channel "Setnel by Datum Labs" |

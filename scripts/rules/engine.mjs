@@ -23,7 +23,7 @@ import * as lib from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const RULES_DIR = path.resolve(HERE, '../../rules');
-const HUB = process.env.SETNEL_HUB_URL || 'https://setnel.datumlab.xyz';
+const HUB = process.env.SETNEL_HUB_URL || 'https://setnel-hub.datumlabs.workers.dev';
 const SECRET = process.env.SETNEL_DASHBOARD_SECRET_PLATFORM;
 const DB = process.env.PLATFORM_DATABASE_URL;
 const DASHBOARD_ID = 'platform';
