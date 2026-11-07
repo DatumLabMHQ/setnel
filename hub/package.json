@@ -2,18 +2,21 @@
   "name": "setnel-hub",
   "version": "0.1.0",
   "private": true,
-  "description": "Setnel Hub \u2014 central ingest + storage + private alert page for Datum Labs dashboards",
+  "description": "Setnel Hub — central ingest + storage + private alert page for Datum Labs dashboards",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "vite dev --port 3000",
+    "build": "vite build",
+    "start": "vite preview",
+    "deploy": "vinext-cloudflare deploy",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/*.test.ts",
     "db:push": "tsx db/push.ts && tsx db/migrate.ts",
     "db:migrate": "tsx db/migrate.ts",
     "lint": "eslint .",
     "test:smoke": "playwright test",
-    "check": "npm run typecheck && npm run build"
+    "check": "npm run typecheck && npm run build",
+    "dev:next": "next dev",
+    "build:next": "next build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
@@ -21,33 +24,42 @@
     "@neondatabase/serverless": "^0.10.4",
     "@phosphor-icons/react": "^2.1.10",
     "@tanstack/react-table": "^9.2.4",
+    "@vinext/cloudflare": "^1.3.3",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.3.0",
     "next": "^15.5.0",
     "next-themes": "^0.4.6",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-resizable-panels": "^4.12.4",
+    "react-server-dom-webpack": "^19.3.1",
     "recharts": "^3.8.0",
     "sonner": "^2.0.7",
     "tw-animate-css": "^1.4.0",
+    "vinext": "^1.4.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^2.0.0-beta.v.12",
     "@eslint/eslintrc": "^3.3.7",
     "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.2.1",
+    "@vitejs/plugin-rsc": "^0.5.39",
+    "cf": "^1.0.0-beta.27",
     "eslint": "^9.39.5",
     "eslint-config-next": "^15.5.25",
     "tailwindcss": "^4.1.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.9"
+    "typescript": "^5.9",
+    "vite": "^8.3.0"
   },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "type": "module"
 }

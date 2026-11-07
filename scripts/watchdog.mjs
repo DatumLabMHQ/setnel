@@ -9,7 +9,7 @@
 // Plain Node (global fetch), no dependencies — so it can't fail for the same
 // reason the thing it watches might.
 
-const STATUS_URL = process.env.SETNEL_STATUS_URL || 'https://setnel.datumlab.xyz/api/v1/status';
+const STATUS_URL = process.env.SETNEL_STATUS_URL || 'https://setnel-hub.datumlabs.workers.dev/api/v1/status';
 const STALE_MIN = Number(process.env.SETNEL_STALE_MIN || '20'); // dashboards ping every 5m
 // The watchdog has no cooldown — it fires every 15 min a condition holds. A few
 // old rows stuck in the dead-letter are not an every-15-min emergency, so only

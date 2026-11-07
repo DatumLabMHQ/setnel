@@ -2,7 +2,7 @@
 
 **Setnel** is Datum Labs' risk-monitoring product. Each dashboard runs its own
 alert rules ("detectors") on a 5-minute cron and posts findings to the **Setnel
-Hub** (`https://setnel.datumlab.xyz`), which stores history, deduplicates, fires
+Hub** (`https://setnel-hub.datumlabs.workers.dev`), which stores history, deduplicates, fires
 Telegram, and shows everything on the private console.
 
 This guide is for a dashboard **owner** (e.g. wiring SparkLend, Lending
@@ -117,7 +117,7 @@ in `templates/detectors.example.ts`.
 ## Step 4 — Set three environment variables on your Vercel project
 
 ```
-SETNEL_HUB_URL   = https://setnel.datumlab.xyz
+SETNEL_HUB_URL   = https://setnel-hub.datumlabs.workers.dev
 SETNEL_SECRET    = <the shared secret from Step 1>
 SETNEL_SELF_URL  = https://<your-dashboard>.vercel.app
 ```

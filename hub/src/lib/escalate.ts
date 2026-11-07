@@ -80,7 +80,7 @@ export async function weeklyEscalationSummary(days = 7, dry = false): Promise<{ 
   const day = (v: string | null) => (v ? new Date(v).toISOString().slice(5, 16).replace('T', ' ') : '');
   const stillOpen = rows.filter((r) => r.status === 'active' && !r.acknowledged_at);
   const lines = rows.map((r) => `• [${r.severity}] ${r.dashboard_name}: ${r.message}\n  opened ${day(r.opened_at)} · ${r.status}${r.acknowledged_at ? ' · acknowledged' : ''}${r.resolved_at ? ' · resolved ' + day(r.resolved_at) : ''} · ${r.event_count} events`);
-  const hub = (process.env.SETNEL_SELF_URL || 'https://setnel.datumlab.xyz').replace(/\/$/, '');
+  const hub = (process.env.SETNEL_SELF_URL || 'https://setnel-hub.datumlabs.workers.dev').replace(/\/$/, '');
   const text = [
     `Setnel escalations, last ${days} days: ${rows.length} incident${rows.length === 1 ? '' : 's'} went unacknowledged past ${esc.escalateAfterMin} minutes; ${stillOpen.length} still open and unacknowledged.`,
     '',

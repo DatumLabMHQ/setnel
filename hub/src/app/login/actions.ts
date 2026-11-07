@@ -29,7 +29,7 @@ export async function requestMagicLink(formData: FormData) {
   const token = await createLoginToken(user.id);
   const h = await headers();
   const proto = h.get('x-forwarded-proto') ?? 'https';
-  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'setnel.datumlab.xyz';
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'setnel-hub.datumlabs.workers.dev';
   const link = `${proto}://${host}/login/verify?token=${token}`;
 
   if (emailConfigured()) {

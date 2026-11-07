@@ -3,7 +3,7 @@
 import { getSignals, type SignalRow } from './signals';
 import { composeBrief, briefText, type Brief } from './brief';
 
-const HUB = (process.env.SETNEL_SELF_URL || 'https://setnel.datumlab.xyz').replace(/\/$/, '');
+const HUB = (process.env.SETNEL_SELF_URL || 'https://setnel-hub.datumlabs.workers.dev').replace(/\/$/, '');
 
 function fmtNumbers(n: Record<string, number | string | null> | undefined): string {
   if (!n) return '';

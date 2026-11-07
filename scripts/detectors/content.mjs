@@ -28,7 +28,7 @@
 import { createHmac } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 
-const HUB = process.env.SETNEL_HUB_URL || 'https://setnel.datumlab.xyz';
+const HUB = process.env.SETNEL_HUB_URL || 'https://setnel-hub.datumlabs.workers.dev';
 const SECRET = process.env.SETNEL_DASHBOARD_SECRET_PLATFORM;
 const DB = process.env.PLATFORM_DATABASE_URL;
 const DASHBOARD_ID = 'platform';

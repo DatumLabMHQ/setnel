@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     'Last 4 weeks:',
     ...weeks.map((w) => `  ${w.week}: ${w.incidents} inc, ${w.falsePositives} FP, ack ${w.ackedPct}%, MTTA ${w.mttaMin ?? '—'}m, MTTR ${w.mttrMin ?? '—'}m`),
     '',
-    'Full reports: https://setnel.datumlab.xyz/setnel/reports',
+    'Full reports: https://setnel-hub.datumlabs.workers.dev/setnel/reports',
   ].join('\n');
 
   const sent = await sendMail('Setnel weekly digest', lines, recipients);

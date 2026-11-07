@@ -17,6 +17,6 @@ jobs:
     steps:
       - name: Call the hub
         run: |
-          out=$(curl -s --max-time 120 -w "\n%{http_code}" "https://setnel.datumlab.xyz/api/v1/escalations/weekly?key=${{ secrets.SETNEL_CRON_SECRET }}${{ inputs.dry_run && '&dry=1' || '' }}")
+          out=$(curl -s --max-time 120 -w "\n%{http_code}" "https://setnel-hub.datumlabs.workers.dev/api/v1/escalations/weekly?key=${{ secrets.SETNEL_CRON_SECRET }}${{ inputs.dry_run && '&dry=1' || '' }}")
           echo "$out"
           [ "$(echo "$out" | tail -1)" = "200" ]

@@ -1,6 +1,6 @@
 # Setnel Roadmap — from MVP to institutional-grade
 
-Status: **✅ COMPLETE — all 7 phases shipped & live at setnel.datumlab.xyz.**
+Status: **✅ COMPLETE — all 7 phases shipped & live at setnel-hub.datumlabs.workers.dev.**
 Sequenced so each phase shipped standalone value and unblocked the next.
 Effort buckets: **S** = a few days · **M** = ~1 week · **L** = 2-3 weeks.
 

@@ -7,13 +7,13 @@
 -- seed must never clobber it. Only metadata is refreshed.
 
 INSERT INTO dashboards (id, name, protocol_slug, base_url, enabled) VALUES
-  ('aave',          'Aave V3',                       'aave-v3',      'https://aave-dashboard-datum.vercel.app',                true),
-  ('sui',           'State of SUI',                  'sui-lending',  'https://sui-lending-datum.vercel.app',                   true),
-  ('navi',          'Navi Lending',                  'navi',         'https://sui-lending-datum.vercel.app', false),
-  ('centrifuge',    'Centrifuge RWA',                'centrifuge',   'https://datumlabs-centrifuge.vercel.app',          false),
+  ('aave',          'Aave V3',                       'aave-v3',      'https://datumlabs-aavev3dashboard.datumlabs.workers.dev',                true),
+  ('sui',           'State of SUI',                  'sui-lending',  'https://suilending.datumlabs.workers.dev',                   true),
+  ('navi',          'Navi Lending',                  'navi',         'https://suilending.datumlabs.workers.dev', false),
+  ('centrifuge',    'Centrifuge RWA',                'centrifuge',   'https://centrifuge-rwa-dashboard.datumlabs.workers.dev',          false),
   ('defi_tvl',      'DeFi TVL Benchmark',            'defi-tvl',     'https://defi-tvl-dashboard.vercel.app',            false),
-  ('liquidator',    'Liquidator Economy',            'liquidator',   'https://liquidator-economy-dashboard.vercel.app',  false),
-  ('lending_intel', 'Lending Intelligence Terminal', 'lending-intel','https://lending-intelligence-terminal.vercel.app', false),
+  ('liquidator',    'Liquidator Economy',            'liquidator',   'https://liquidator-economy-dashboard.datumlabs.workers.dev',  false),
+  ('lending_intel', 'Lending Intelligence Terminal', 'lending-intel','https://lending-intelligence-terminal.datumlabs.workers.dev', false),
   ('sparklend',     'Spark Lend',                    'sparklend',    'https://sparklend-dashboard.vercel.app',           false),
   ('platform',      'Datum data platform',           'datum-models', 'https://github.com/DatumLabMHQ/datum-models',      false)
 ON CONFLICT (id) DO UPDATE SET

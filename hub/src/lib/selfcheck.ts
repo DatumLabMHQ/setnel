@@ -21,7 +21,7 @@ export async function checkAndPageStaleCrons(): Promise<{ stale: string[]; paged
     severity: 'critical',
     category: 'escalation',
     message: `🩺 Setnel self-check: ${stale.length} cron job(s) stale — the monitor may be blind.\n${lines}`,
-    deepLink: 'https://setnel.datumlab.xyz/setnel/settings',
+    deepLink: 'https://setnel-hub.datumlabs.workers.dev/setnel/settings',
   });
   await recordHeartbeat('selfalert', stale.map((s) => s.job).join(','));
   return { stale: stale.map((s) => s.job), paged: true };

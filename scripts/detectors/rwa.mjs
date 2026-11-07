@@ -9,7 +9,7 @@
 
 import { createHmac } from 'node:crypto';
 
-const HUB = process.env.SETNEL_HUB_URL || 'https://setnel.datumlab.xyz';
+const HUB = process.env.SETNEL_HUB_URL || 'https://setnel-hub.datumlabs.workers.dev';
 const SECRET = process.env.SETNEL_DASHBOARD_SECRET_RWA;
 const WORKER = process.env.RWA_WORKER_URL || 'https://rwa-terminal-worker.datumlabs.workers.dev';
 const DASHBOARD_ID = 'rwa';

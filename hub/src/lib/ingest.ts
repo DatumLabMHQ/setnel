@@ -72,7 +72,7 @@ export async function ingestBatch(
         const recipients = (process.env.SETNEL_CONTENT_RECIPIENTS ?? '').split(/[,\s]+/).map((r) => r.trim()).filter(Boolean);
         if (recipients.length) {
           const row = { id: String(inserted[0].id), dashboard_id: dashboard.id, dashboard_name: dashboard.name, detector_id: ev.detectorId, fingerprint, severity, message: ev.message, payload: (ev.payload ?? {}) as never, link_path: linkPath, signal_status: 'new' as const, fired_at: String(inserted[0].fired_at) };
-          const sent = await sendMail(`Setnel ${severity}: ${ev.message}`, [signalBlock(row), '', `Sent at once because the rule marks this ${severity}. The daily brief will carry it too.`, `Content page: ${(process.env.SETNEL_SELF_URL || 'https://setnel.datumlab.xyz').replace(/\/$/, '')}/setnel/content`].join('\n'), recipients);
+          const sent = await sendMail(`Setnel ${severity}: ${ev.message}`, [signalBlock(row), '', `Sent at once because the rule marks this ${severity}. The daily brief will carry it too.`, `Content page: ${(process.env.SETNEL_SELF_URL || 'https://setnel-hub.datumlabs.workers.dev').replace(/\/$/, '')}/setnel/content`].join('\n'), recipients);
           if (sent) notified += 1;
         }
       }
