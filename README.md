@@ -27,7 +27,7 @@ The console is at **https://setnel.datumlab.xyz**, behind a sign-in.
                              |                   shared secret, HMAC-SHA256
                              v
                     +-----------------+
-                    |   the hub       |  Next.js on Vercel, Neon Postgres
+                    |   the hub       |  Next.js on Workers, Neon Postgres
                     +-----------------+
                              |
      every event is stored, then collapsed by fingerprint into an incident,
@@ -169,7 +169,7 @@ node scripts/backtest.mjs --rule tvl_wow --since 2025-09-01
 
 | Thing | Where |
 |---|---|
-| The hub | Vercel, Datum Labs account, project `setnel-hub-datum`, aliased to setnel.datumlab.xyz |
+| The hub | Cloudflare Workers, Datum Labs account, Worker `setnel-hub` (https://setnel-hub.datumlabs.workers.dev); setnel.datumlab.xyz still points at the old Vercel project |
 | The database | Neon Postgres, separate from the data platform's |
 | Every scheduled job | GitHub Actions, dispatched by datum-scheduler |
 | Alerts | Telegram, channel "Setnel by Datum Labs" |
