@@ -7,9 +7,8 @@ name: monitor-warmup
 # This is intentionally lightweight: no Redis state, no Telegram, no email.
 # Warmup failures are non-actionable and we don't alert on them.
 
+# Schedule moved to the public DatumLabMHQ/setnel-pings repo on 2026-09-18 (free minutes); keep workflow_dispatch for a manual run.
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch: {}
 
 concurrency:

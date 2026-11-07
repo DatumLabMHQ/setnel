@@ -4,7 +4,7 @@ name: monitor-check
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '7 * * * *'  # hourly since 2026-09-18 to stay inside the org's free Actions minutes; was every 15 minutes
   workflow_dispatch: {}
 
 concurrency:
